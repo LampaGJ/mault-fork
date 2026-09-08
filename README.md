@@ -97,7 +97,15 @@ cp .env.example .env
    ```bash
    docker compose up -d
    ```
-3. Open `http://localhost:8080` and sign up. The first account ever created on a fresh instance is automatically made platform admin (Games Manager, sync job, impersonation) and gets a default "Home" organisation — from there, add at least one game in the admin Games Manager (`/app/admin`) and run its sync before scanning, or collections/scanning have nothing to match against.
+   If port `8080` (web) or `5432` (postgres) is already taken by something else on your machine, add a `docker-compose.override.yml` (gitignored — see `.gitignore`) remapping just the conflicting port(s), e.g.:
+   ```yaml
+   services:
+     web:
+       ports:
+         - "REPLACE_WITH_FREE_PORT:80"
+   ```
+   then re-run `docker compose up -d` and use that port instead of 8080 below.
+3. Open `http://localhost:8080` (or your remapped port) and sign up. The first account ever created on a fresh instance is automatically made platform admin (Games Manager, sync job, impersonation) and gets a default "Home" organisation — from there, add at least one game in the admin Games Manager (`/app/admin`) and run its sync before scanning, or collections/scanning have nothing to match against.
 4. **Star Wars Unlimited only**: skip the manual game-creation step above by running `pnpm --filter @magic-vault/server bootstrap:swu` once the stack is up. It creates a bootstrap admin account (or reuses one if already run), configures the `swu` game with its field definitions, and — if `data/seed/swu-cards.csv.gz` is present — restores the full pre-vectorized card catalog (~9,185 cards) directly via Postgres `COPY`, skipping the live-API fetch + SigLIP inference pass entirely (seconds instead of tens of minutes). Safe to re-run; every step is idempotent and skips work already done. If a game/cards already exist it does nothing for that step. Set `SERVER_URL` if the server isn't on `http://localhost:3001`, or `BOOTSTRAP_ADMIN_EMAIL`/`BOOTSTRAP_ADMIN_PASSWORD` to override the default bootstrap account credentials (change these for anything beyond a throwaway local instance).
 
 The `server` container applies Drizzle migrations, own-auth's own migrations, and the RLS bootstrap (`packages/server/src/db/bootstrap-local.sql`, run via `pnpm db:migrate-local` — see that script for why plain Postgres needs a few things Neon normally provisions automatically) on every start; all three steps are idempotent.
