@@ -62,29 +62,37 @@ async function fetchCards(
   addLog(`Fetched ${all.length} total cards, ${canonical.length} canonical.`);
 
   return canonical.map((c) => ({
-    id: String(c.attributes?.cardId ?? c.attributes?.cardNumber ?? ""),
+    // cardId is null for the vast majority of cards - cardNumber is NOT a
+    // safe fallback (only unique within one set); serialCode is unique per
+    // printing and present on every card. See search.ts's matching comment.
+    id: String(c.attributes?.cardId ?? c.attributes?.serialCode ?? ""),
     name: c.attributes?.title ?? "",
     setCode: c.attributes?.serialCode ?? "",
     imageUrl: c.attributes?.artFront?.data?.attributes?.formats?.card?.url,
   }));
 }
 
-async function fetchOne(id: string, baseUrl: string) {
-  const url = `${baseUrl}?cardId=${encodeURIComponent(id)}`;
+async function fetchByFilter(
+  baseUrl: string,
+  field: "cardId" | "serialCode",
+  value: string,
+) {
+  // Strapi silently ignores an unrecognized bare query param (`?cardId=X`
+  // with no filters[] wrapper is a no-op returning the default unfiltered
+  // page) - always use filters[...] or this returns the wrong card. See
+  // search.ts's matching comment.
+  const url = `${baseUrl}?filters[${field}]=${encodeURIComponent(value)}`;
   const res = await fetch(url, { headers: CARD_API_HEADERS });
-  if (!res.ok) {
-    return null;
-  }
-
+  if (!res.ok) return null;
   const rows = extractRows(await res.json());
-  if (!rows || rows.length === 0) {
-    return null;
-  }
+  return rows[0] ?? null;
+}
 
-  const raw = rows[0];
-  if (!raw) {
-    return null;
-  }
+async function fetchOne(id: string, baseUrl: string) {
+  // `id` may be a real cardId, or the serialCode fallback used when cardId
+  // is null (the majority of cards). Try cardId first, fall back to serialCode.
+  const raw = (await fetchByFilter(baseUrl, "cardId", id)) ?? (await fetchByFilter(baseUrl, "serialCode", id));
+  if (!raw) return null;
 
   return {
     name: raw.attributes?.title ?? "",

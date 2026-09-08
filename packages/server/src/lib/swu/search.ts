@@ -13,7 +13,11 @@ function proxiedImageUrl(url: string): string {
 
 function normalizeSwuCard(raw: SwuCard): PlayingCard {
   const attrs = raw.attributes;
-  const id = String(attrs.cardId ?? attrs.cardNumber ?? "");
+  // cardId is null for the vast majority of cards (~9,050 of 9,185 on the
+  // live API) - cardNumber is NOT a safe fallback since it's only unique
+  // within a single set (small integers that collide across expansions).
+  // serialCode is present on every card and is unique per printing.
+  const id = String(attrs.cardId ?? attrs.serialCode ?? "");
 
   // Get image URL from artFront
   const imageUrl = attrs.artFront?.data?.attributes?.formats?.card?.url;
@@ -81,7 +85,11 @@ export async function Search(
   const invalid = validateQuery(query);
   if (invalid) return invalid;
 
-  const url = `${baseUrl}?title=${encodeURIComponent(query)}`;
+  // filters[title][$containsi] is required - a bare `?title=X` (no filters[]
+  // wrapper) is silently ignored by Strapi and returns the unfiltered
+  // default page instead of erroring, so this must never be simplified back
+  // to a bare param. $containsi = case-insensitive substring match.
+  const url = `${baseUrl}?filters[title][$containsi]=${encodeURIComponent(query)}`;
   const response = await fetchCardApi(url, { headers: CARD_API_HEADERS });
 
   if (response.status === 404) {
@@ -107,29 +115,43 @@ export async function Search(
   };
 }
 
+async function fetchByFilter(
+  baseUrl: string,
+  field: "cardId" | "serialCode",
+  value: string,
+): Promise<SwuCard | null> {
+  // Strapi silently ignores an unrecognized bare query param instead of
+  // erroring - `?cardId=X` (no filters[] wrapper) is a no-op that returns
+  // the default unfiltered page, not a 0-result response. Always use the
+  // filters[...] wrapper or this returns whatever the first default-listed
+  // card happens to be, not the requested one.
+  const response = await fetchCardApi(
+    `${baseUrl}?filters[${field}]=${encodeURIComponent(value)}`,
+    { headers: CARD_API_HEADERS },
+  );
+  if (!response.ok) return null;
+  const rows = extractRows(await response.json());
+  return rows[0] ?? null;
+}
+
 export async function SearchById(
   id: string,
   baseUrl: string = SWU_DEFAULT_URL,
 ): Promise<Result<PlayingCard>> {
-  const response = await fetchCardApi(`${baseUrl}?cardId=${encodeURIComponent(id)}`, {
-    headers: CARD_API_HEADERS,
-  });
-
-  if (!response.ok) {
+  // `id` may be a real cardId, or the serialCode fallback used when cardId
+  // is null (the majority of cards - see normalizeSwuCard/sync.ts comments).
+  // Try cardId first, fall back to serialCode.
+  let raw: SwuCard | null;
+  try {
+    raw = await fetchByFilter(baseUrl, "cardId", id);
+    if (!raw) raw = await fetchByFilter(baseUrl, "serialCode", id);
+  } catch (err) {
     return {
       success: false,
-      message: `Star Wars Unlimited API error: ${response.status} for card ${id}`,
+      message: `Star Wars Unlimited API error fetching card ${id}: ${err instanceof Error ? err.message : String(err)}`,
     };
   }
 
-  const data = await response.json();
-  const rows = extractRows(data);
-
-  if (!rows || rows.length === 0) {
-    return { success: false, message: `Card ${id} not found.` };
-  }
-
-  const raw = rows[0];
   if (!raw) {
     return { success: false, message: `Card ${id} not found.` };
   }
