@@ -18,6 +18,7 @@ import { LORCANA_DEFAULT_URL } from "../lib/lorcana/search";
 import { ONE_PIECE_DEFAULT_URL } from "../lib/onepiece/search";
 import { POKEMON_DEFAULT_URL } from "../lib/pokemon/search";
 import { SCRYFALL_DEFAULT_URL } from "../lib/scryfall/search";
+import { SWU_DEFAULT_URL } from "../lib/swu/search";
 import {
   FREE_PLAN_DAILY_SCAN_LIMIT,
   getBusinessPriceInfo,
@@ -113,6 +114,11 @@ const EXTERNAL_API_CHECKS: { name: string; url: string; gameKey: string }[] = [
     gameKey: "onepiece",
   },
   { name: "Flesh and Blood API", url: FAB_DEFAULT_URL, gameKey: "fab" },
+  {
+    name: "Star Wars Unlimited",
+    url: SWU_DEFAULT_URL,
+    gameKey: "swu",
+  },
   {
     name: "YGOPRODeck (Yu-Gi-Oh!)",
     url: YUGIOH_DEFAULT_URL,

@@ -10,6 +10,7 @@ import { lorcanaSyncSource } from "./lorcana/sync";
 import { onePieceSyncSource } from "./onepiece/sync";
 import { pokemonSyncSource } from "./pokemon/sync";
 import { scryfallSyncSource } from "./scryfall/sync";
+import { swuSyncSource } from "./swu/sync";
 import { vectorizeImageFromBuffer } from "./vectorize";
 import { yugiohSyncSource } from "./yugioh/sync";
 
@@ -21,6 +22,7 @@ export const SYNC_SOURCES: Record<string, SyncSource> = {
   onepiece: onePieceSyncSource,
   fab: fabSyncSource,
   yugioh: yugiohSyncSource,
+  swu: swuSyncSource,
 };
 
 type SseWriter = (event: string, data: unknown) => void;
