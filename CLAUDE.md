@@ -66,6 +66,21 @@ pnpm workspace + Turborepo, three packages: `shared` (framework-agnostic types/c
 - Forms always use React Hook Form + a Zod resolver — never a hand-rolled `useState`-per-field form.
 - The Vite dev proxy rewrites `/api/*` → `http://localhost:3001/*`; server routes are registered without an `/api` prefix to match (`app.route("/collections", ...)`, not `/api/collections`).
 
+## Star Wars Unlimited (SWU) Setup & Testing
+
+A comprehensive 10-task plan for setting up mault with SWU game configuration, running the full sync job, and executing end-to-end QA tests (#111-#114) is documented at:
+
+**Plan:** `docs/superpowers/plans/2026-09-08-swu-e2e-setup-testing.md`
+
+This plan covers:
+- Starting the dev server and admin UI access
+- Creating the SWU game record with field definitions
+- Triggering the full sync job (~4,674 canonical cards)
+- Running manual integration tests: search query, searchById, full sync verification, and e2e scanning simulation
+- Generating test logs and final verification report
+
+Use `superpowers:subagent-driven-development` or `superpowers:executing-plans` to execute the plan task-by-task. See the plan file for complete details on each of the 10 tasks.
+
 ## Code style
 
 Don't write excessive comments — code should be self-documenting through clear naming and structure. Only add a comment when it explains something the code itself can't: a non-obvious constraint, a workaround for a specific external system's quirk, or an invariant that would surprise a reader. Don't restate what the code already makes obvious.
