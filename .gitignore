@@ -42,6 +42,9 @@ next-env.d.ts
 
 **/.turbo/**
 
+# local docker-compose port/env overrides (machine-specific, e.g. port conflicts)
+docker-compose.override.yml
+
 **/dist/**
 
 firmware/**/build/**
