@@ -1,24 +1,11 @@
 import { z } from "zod";
 
-// Enum values determined from live API inspection
-const RarityEnum = z.enum([
-  "Common",
-  "Uncommon",
-  "Rare",
-  "Legendary",
-  "Special",
-]);
-
-const TypeEnum = z.enum(["Base", "Event", "Leader", "Unit", "Upgrade"]);
-
-const AspectEnum = z.enum([
-  "Aggression",
-  "Command",
-  "Cunning",
-  "Heroism",
-  "Vigilance",
-  "Villainy",
-]);
+// Rarity/type/aspect names are deliberately validated as plain z.string()
+// (via RelationAttribute below), not a closed enum, so that a future
+// expansion set introducing a new rarity tier, card type, or aspect doesn't
+// fail schema validation for the whole sync - see fetchCards in sync.ts,
+// which has no hardcoded set list or page count either, so a new set's
+// cards are picked up automatically on the next admin-triggered sync.
 
 // Nested relation structures
 const RelationAttribute = z.object({
