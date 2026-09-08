@@ -41,6 +41,13 @@ const AspectRelation = z.object({
   data: z.array(RelationData),
 }).optional();
 
+// variantOf/reprintOf: null on a canonical printing, a relation object on a
+// variant/reprint. Only presence-of-null matters for canonicalization
+// filtering (see fetchCards in sync.ts) - the nested shape isn't consumed.
+const NullableSelfRelation = z.object({
+  data: z.unknown().nullable(),
+}).optional();
+
 // Image format structures
 const ImageFormat = z.object({
   url: z.string().url(),
@@ -81,7 +88,7 @@ const ImageRelation = z.object({
 export const SwuCardAttributes = z.object({
   title: z.string(),
   subtitle: z.string().nullable().optional(),
-  cardId: z.string(),
+  cardId: z.string().nullable(),
   cardNumber: z.number(),
   cardCount: z.number(),
   serialCode: z.string(),
@@ -102,6 +109,8 @@ export const SwuCardAttributes = z.object({
   artFront: ImageRelation,
   artBack: ImageRelation,
   expansion: SimpleRelationOptional,
+  variantOf: NullableSelfRelation,
+  reprintOf: NullableSelfRelation,
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   publishedAt: z.string().datetime(),
@@ -114,9 +123,17 @@ export const SwuCard = z.object({
   attributes: SwuCardAttributes,
 });
 
+const Pagination = z.object({
+  page: z.number(),
+  pageSize: z.number(),
+  pageCount: z.number(),
+  total: z.number(),
+});
+
 // API response for card-list
 export const SwuCardListResponse = z.object({
   data: z.array(SwuCard),
+  meta: z.object({ pagination: Pagination }).optional(),
 });
 
 export type SwuCardAttributes = z.infer<typeof SwuCardAttributes>;

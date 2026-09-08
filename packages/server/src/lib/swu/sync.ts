@@ -1,7 +1,7 @@
 import { CARD_API_HEADERS } from "../card-search/constants";
 import type { SyncSource, SyncSourceCard } from "../card-search/sync-types";
 import { SWU_DEFAULT_URL } from "./search";
-import { SwuCardListResponse } from "./api-types";
+import { SwuCardListResponse, type SwuCard } from "./api-types";
 
 function extractRows(json: unknown) {
   const parsed = SwuCardListResponse.safeParse(json);
@@ -15,6 +15,20 @@ function extractRows(json: unknown) {
   return [];
 }
 
+const PAGE_SIZE = 100;
+
+function buildPageUrl(baseUrl: string, page: number): string {
+  return `${baseUrl}?pagination[page]=${page}&pagination[pageSize]=${PAGE_SIZE}`;
+}
+
+// Canonical printing = variantOf is null. Kept even when reprintOf is set
+// (a reprint is still the correct printing to associate with its own set) -
+// see ../swu-labels/src/ingest.ts:111-130 for the empirically-verified
+// rationale this mirrors.
+function isCanonical(card: SwuCard): boolean {
+  return card.attributes.variantOf?.data == null;
+}
+
 async function fetchCards(
   baseUrl: string,
   addLog: (msg: string) => void,
@@ -23,16 +37,31 @@ async function fetchCards(
 ): Promise<SyncSourceCard[]> {
   addLog("Fetching Star Wars Unlimited catalog...");
 
-  const url = baseUrl;
-  const res = await fetch(url, { headers: CARD_API_HEADERS, signal });
-  if (!res.ok) {
-    throw new Error(`Star Wars Unlimited card list fetch failed: ${res.status}`);
-  }
+  const all: SwuCard[] = [];
+  let page = 1;
+  let pageCount = 1;
 
-  const rows = extractRows(await res.json());
-  addLog(`Fetched ${rows.length} cards.`);
+  do {
+    const res = await fetch(buildPageUrl(baseUrl, page), { headers: CARD_API_HEADERS, signal });
+    if (!res.ok) {
+      throw new Error(`Star Wars Unlimited card list fetch failed: ${res.status} (page ${page})`);
+    }
 
-  return rows.map((c) => ({
+    const parsed = SwuCardListResponse.safeParse(await res.json());
+    if (!parsed.success) {
+      throw new Error(`Star Wars Unlimited card list response failed schema validation (page ${page}): ${parsed.error.message}`);
+    }
+
+    all.push(...parsed.data.data);
+    pageCount = parsed.data.meta?.pagination.pageCount ?? page;
+    addLog(`Fetched page ${page}/${pageCount} (${all.length} cards so far)...`);
+    page += 1;
+  } while (page <= pageCount);
+
+  const canonical = all.filter(isCanonical);
+  addLog(`Fetched ${all.length} total cards, ${canonical.length} canonical.`);
+
+  return canonical.map((c) => ({
     id: String(c.attributes?.cardId ?? c.attributes?.cardNumber ?? ""),
     name: c.attributes?.title ?? "",
     setCode: c.attributes?.serialCode ?? "",
