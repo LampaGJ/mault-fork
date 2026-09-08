@@ -45,3 +45,9 @@ next-env.d.ts
 **/dist/**
 
 firmware/**/build/**
+
+# claude code harness state (session locks, not project source)
+.claude/
+
+# stray npm lockfile in this pnpm-only repo
+package-lock.json
