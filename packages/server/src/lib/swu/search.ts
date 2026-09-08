@@ -13,11 +13,12 @@ function proxiedImageUrl(url: string): string {
 
 function normalizeSwuCard(raw: SwuCard): PlayingCard {
   const attrs = raw.attributes;
-  // cardId is null for the vast majority of cards (~9,050 of 9,185 on the
-  // live API) - cardNumber is NOT a safe fallback since it's only unique
-  // within a single set (small integers that collide across expansions).
-  // serialCode is present on every card and is unique per printing.
-  const id = String(attrs.cardId ?? attrs.serialCode ?? "");
+  // Every printing (Standard, Hyperspace, Showcase, Foil variants, promos,
+  // etc.) is synced as its own distinct card - see fetchCards in sync.ts.
+  // cardId identifies the card CONCEPT and is shared across all of a card's
+  // printings, so it cannot be used as a per-printing id. serialCode is the
+  // only field that's both present on every card and unique per printing.
+  const id = attrs.serialCode ?? "";
 
   // Get image URL from artFront
   const imageUrl = attrs.artFront?.data?.attributes?.formats?.card?.url;
@@ -35,12 +36,15 @@ function normalizeSwuCard(raw: SwuCard): PlayingCard {
   // Combine type and aspects into typeLine
   const typeLine = [typeName, ...aspects].filter(Boolean).join(" - ");
 
+  const expansionCode = attrs.expansion?.data?.attributes?.code ?? "";
+  const expansionName = attrs.expansion?.data?.attributes?.name ?? "";
+
   return {
     id,
     name: attrs.title ?? "",
     image,
-    set: attrs.serialCode ?? "",
-    setName: attrs.serialCode ?? "",
+    set: expansionCode,
+    setName: expansionName || expansionCode,
     collectorNumber: String(attrs.cardNumber ?? id),
     rarity,
     typeLine,
@@ -117,14 +121,14 @@ export async function Search(
 
 async function fetchByFilter(
   baseUrl: string,
-  field: "cardId" | "serialCode",
+  field: "serialCode",
   value: string,
 ): Promise<SwuCard | null> {
   // Strapi silently ignores an unrecognized bare query param instead of
-  // erroring - `?cardId=X` (no filters[] wrapper) is a no-op that returns
-  // the default unfiltered page, not a 0-result response. Always use the
-  // filters[...] wrapper or this returns whatever the first default-listed
-  // card happens to be, not the requested one.
+  // erroring - `?serialCode=X` (no filters[] wrapper) is a no-op that
+  // returns the default unfiltered page, not a 0-result response. Always
+  // use the filters[...] wrapper or this returns whatever the first
+  // default-listed card happens to be, not the requested one.
   const response = await fetchCardApi(
     `${baseUrl}?filters[${field}]=${encodeURIComponent(value)}`,
     { headers: CARD_API_HEADERS },
@@ -138,13 +142,10 @@ export async function SearchById(
   id: string,
   baseUrl: string = SWU_DEFAULT_URL,
 ): Promise<Result<PlayingCard>> {
-  // `id` may be a real cardId, or the serialCode fallback used when cardId
-  // is null (the majority of cards - see normalizeSwuCard/sync.ts comments).
-  // Try cardId first, fall back to serialCode.
+  // id is always a serialCode (unique per printing) - see normalizeSwuCard.
   let raw: SwuCard | null;
   try {
-    raw = await fetchByFilter(baseUrl, "cardId", id);
-    if (!raw) raw = await fetchByFilter(baseUrl, "serialCode", id);
+    raw = await fetchByFilter(baseUrl, "serialCode", id);
   } catch (err) {
     return {
       success: false,

@@ -21,14 +21,6 @@ function buildPageUrl(baseUrl: string, page: number): string {
   return `${baseUrl}?pagination[page]=${page}&pagination[pageSize]=${PAGE_SIZE}`;
 }
 
-// Canonical printing = variantOf is null. Kept even when reprintOf is set
-// (a reprint is still the correct printing to associate with its own set) -
-// see ../swu-labels/src/ingest.ts:111-130 for the empirically-verified
-// rationale this mirrors.
-function isCanonical(card: SwuCard): boolean {
-  return card.attributes.variantOf?.data == null;
-}
-
 async function fetchCards(
   baseUrl: string,
   addLog: (msg: string) => void,
@@ -58,30 +50,26 @@ async function fetchCards(
     page += 1;
   } while (page <= pageCount);
 
-  const canonical = all.filter(isCanonical);
-  addLog(`Fetched ${all.length} total cards, ${canonical.length} canonical.`);
+  addLog(`Fetched ${all.length} total cards. Every printing (Standard, Hyperspace, Foil, Showcase, Prestige, promos, etc.) is synced as its own distinct card.`);
 
-  return canonical.map((c) => ({
-    // cardId is null for the vast majority of cards - cardNumber is NOT a
-    // safe fallback (only unique within one set); serialCode is unique per
-    // printing and present on every card. See search.ts's matching comment.
-    id: String(c.attributes?.cardId ?? c.attributes?.serialCode ?? ""),
+  return all.map((c) => ({
+    // cardId identifies the card CONCEPT and is shared across all of a
+    // card's printings/variants - serialCode is the only field that's both
+    // present on every card and unique per printing. See search.ts's
+    // matching comment on normalizeSwuCard.
+    id: c.attributes?.serialCode ?? "",
     name: c.attributes?.title ?? "",
-    setCode: c.attributes?.serialCode ?? "",
+    setCode: c.attributes?.expansion?.data?.attributes?.code ?? c.attributes?.serialCode ?? "",
     imageUrl: c.attributes?.artFront?.data?.attributes?.formats?.card?.url,
   }));
 }
 
-async function fetchByFilter(
-  baseUrl: string,
-  field: "cardId" | "serialCode",
-  value: string,
-) {
-  // Strapi silently ignores an unrecognized bare query param (`?cardId=X`
+async function fetchByFilter(baseUrl: string, serialCode: string) {
+  // Strapi silently ignores an unrecognized bare query param (`?serialCode=X`
   // with no filters[] wrapper is a no-op returning the default unfiltered
   // page) - always use filters[...] or this returns the wrong card. See
   // search.ts's matching comment.
-  const url = `${baseUrl}?filters[${field}]=${encodeURIComponent(value)}`;
+  const url = `${baseUrl}?filters[serialCode]=${encodeURIComponent(serialCode)}`;
   const res = await fetch(url, { headers: CARD_API_HEADERS });
   if (!res.ok) return null;
   const rows = extractRows(await res.json());
@@ -89,14 +77,14 @@ async function fetchByFilter(
 }
 
 async function fetchOne(id: string, baseUrl: string) {
-  // `id` may be a real cardId, or the serialCode fallback used when cardId
-  // is null (the majority of cards). Try cardId first, fall back to serialCode.
-  const raw = (await fetchByFilter(baseUrl, "cardId", id)) ?? (await fetchByFilter(baseUrl, "serialCode", id));
+  // id is always a serialCode (unique per printing) - see search.ts's
+  // normalizeSwuCard comment.
+  const raw = await fetchByFilter(baseUrl, id);
   if (!raw) return null;
 
   return {
     name: raw.attributes?.title ?? "",
-    setCode: raw.attributes?.serialCode ?? "",
+    setCode: raw.attributes?.expansion?.data?.attributes?.code ?? raw.attributes?.serialCode ?? "",
     imageUrl: raw.attributes?.artFront?.data?.attributes?.formats?.card?.url,
   };
 }

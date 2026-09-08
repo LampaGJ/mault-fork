@@ -41,9 +41,39 @@ const AspectRelation = z.object({
   data: z.array(RelationData),
 }).optional();
 
-// variantOf/reprintOf: null on a canonical printing, a relation object on a
-// variant/reprint. Only presence-of-null matters for canonicalization
-// filtering (see fetchCards in sync.ts) - the nested shape isn't consumed.
+// expansion has both `name` (e.g. "Spark of Rebellion") and `code` (e.g.
+// "SOR") - a separate schema from the plain-`name`-only relations above,
+// since z.object() silently strips unrecognized keys and this field was
+// missed entirely in an earlier pass (code was never read as a result).
+const ExpansionRelation = z.object({
+  data: z.object({
+    attributes: z.object({
+      name: z.string(),
+      code: z.string(),
+    }),
+  }).nullable().optional(),
+}).optional();
+
+// Each printing carries its own variantTypes entry (Standard, Standard
+// Foil, Hyperspace, Hyperspace Foil, Showcase, Standard/Foil/Serialized
+// Prestige, and many promo/prerelease/judge/GC/RQ categories - confirmed
+// via live API sampling of Darth Vader's ~50 printings across reprints).
+// Some printings (mostly promos) have an empty array.
+const VariantTypeAttribute = z.object({
+  name: z.string(),
+  foil: z.boolean().nullable().optional(),
+  variantId: z.string().nullable().optional(),
+});
+
+const VariantTypesRelation = z.object({
+  data: z.array(z.object({ attributes: VariantTypeAttribute })),
+}).optional();
+
+// variantOf/reprintOf: null on a printing's own "root" record, a relation
+// object pointing back to that root for every other variant of the same
+// printing (see fetchCards in sync.ts - this is no longer used to filter,
+// every printing is synced as its own distinct card, but the field is kept
+// for potential future grouping/display use).
 const NullableSelfRelation = z.object({
   data: z.unknown().nullable(),
 }).optional();
@@ -101,6 +131,7 @@ export const SwuCardAttributes = z.object({
   power: z.number().nullable().optional(),
   unique: z.boolean(),
   hyperspace: z.boolean(),
+  showcase: z.boolean().nullable().optional(),
   hasFoil: z.boolean(),
   type: SimpleRelation,
   type2: SimpleRelationOptional,
@@ -108,7 +139,8 @@ export const SwuCardAttributes = z.object({
   aspects: AspectRelation,
   artFront: ImageRelation,
   artBack: ImageRelation,
-  expansion: SimpleRelationOptional,
+  expansion: ExpansionRelation,
+  variantTypes: VariantTypesRelation,
   variantOf: NullableSelfRelation,
   reprintOf: NullableSelfRelation,
   createdAt: z.string().datetime(),
