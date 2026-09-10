@@ -86,5 +86,18 @@
   },
   "binsPage": {
     "binLabel": "Bac {{number}}"
+  },
+  "sortingSets": {
+    "title": "Ensembles de tri",
+    "newSet": "Nouvel ensemble",
+    "active": "Actif",
+    "duplicate": "Dupliquer",
+    "delete": "Supprimer",
+    "cannotDeleteLast": "Le dernier ensemble ne peut pas être supprimé",
+    "binSummary": "{{configured}} bacs sur {{total}} utilisés",
+    "empty": "Aucun ensemble de tri. Créez-en un pour réutiliser une configuration de bacs.",
+    "copyName": "{{name}} (copie)",
+    "duplicateTitle": "Dupliquer l'ensemble",
+    "duplicateDescription": "Enregistre une copie de l'ensemble actif, règles comprises, sous un nouveau nom."
   }
 }

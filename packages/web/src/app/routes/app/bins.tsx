@@ -8,6 +8,7 @@ import { BinList } from "@/features/bins/components/bin-list";
 import { NoGameBanner } from "@/features/bins/components/no-game-banner";
 import { NonEnglishRulesBanner } from "@/features/bins/components/non-english-rules-banner";
 import { PresetSelector } from "@/features/bins/components/preset-selector";
+import { SortingSetsPanel } from "@/features/bins/components/sorting-sets-panel";
 import { useCollections } from "@/features/collections/api/use-collections";
 import { CollectionSwitcher } from "@/features/collections/components/collection-switcher";
 import { useIsMobile } from "@/hooks/use-is-mobile";
@@ -73,7 +74,12 @@ export default function BinsPage() {
     <div className="grid grid-cols-12 flex-1 min-h-0 overflow-hidden">
       <section className="col-span-4 lg:col-span-3 overflow-hidden flex flex-col h-full border-r p-2 gap-2 bg-sidebar/70">
         <CollectionSwitcher />
-        <PresetSelector />
+        {/* Bounded so a long set list scrolls instead of pushing BinList out of
+            the column. Mobile keeps the compact PresetSelector - the drawer has
+            no room for per-set previews. */}
+        <div className="max-h-[45%] shrink-0 overflow-y-auto">
+          <SortingSetsPanel />
+        </div>
         <BinList />
       </section>
       <section className="col-span-8 lg:col-span-9 overflow-y-auto max-h-full @container p-4">

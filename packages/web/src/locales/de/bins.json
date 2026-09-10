@@ -86,5 +86,18 @@
   },
   "binsPage": {
     "binLabel": "Fach {{number}}"
+  },
+  "sortingSets": {
+    "title": "Sortier-Sets",
+    "newSet": "Neues Set",
+    "active": "Aktiv",
+    "duplicate": "Duplizieren",
+    "delete": "Löschen",
+    "cannotDeleteLast": "Das letzte Set kann nicht gelöscht werden",
+    "binSummary": "{{configured}} von {{total}} Fächern belegt",
+    "empty": "Noch keine Sortier-Sets. Erstelle eines, um eine Fach-Konfiguration wiederzuverwenden.",
+    "copyName": "{{name}} (Kopie)",
+    "duplicateTitle": "Set duplizieren",
+    "duplicateDescription": "Speichert eine Kopie des aktiven Sets samt Regeln unter einem neuen Namen."
   }
 }

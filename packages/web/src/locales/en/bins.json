@@ -86,5 +86,18 @@
   },
   "binsPage": {
     "binLabel": "Bin {{number}}"
+  },
+  "sortingSets": {
+    "title": "Sorting Sets",
+    "newSet": "New set",
+    "active": "Active",
+    "duplicate": "Duplicate",
+    "delete": "Delete",
+    "cannotDeleteLast": "The last set cannot be deleted",
+    "binSummary": "{{configured}} of {{total}} bins in use",
+    "empty": "No sorting sets yet. Create one to save a bin setup you can reuse.",
+    "copyName": "{{name}} (copy)",
+    "duplicateTitle": "Duplicate Set",
+    "duplicateDescription": "Saves a copy of the active set, rules and all, under a new name."
   }
 }
