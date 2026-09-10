@@ -98,6 +98,7 @@
     "empty": "Aucun ensemble de tri. Créez-en un pour réutiliser une configuration de bacs.",
     "copyName": "{{name}} (copie)",
     "duplicateTitle": "Dupliquer l'ensemble",
-    "duplicateDescription": "Enregistre une copie de l'ensemble actif, règles comprises, sous un nouveau nom."
+    "duplicateDescription": "Enregistre une copie de l'ensemble actif, règles comprises, sous un nouveau nom.",
+    "actionsFor": "Actions pour {{name}}"
   }
 }

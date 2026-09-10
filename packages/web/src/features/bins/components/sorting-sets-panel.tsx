@@ -1,7 +1,14 @@
 import { AuditDrawer, type AuditEntry } from "@/components/audit-drawer";
 import { DeleteDialog } from "@/components/delete-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { DynamicDialog } from "@/components/ui/responsive-dialog";
@@ -29,6 +36,7 @@ import type { BinConfig, BinRuleGroup, BinSet } from "@magic-vault/shared";
 import {
   IconClockHour3,
   IconCopy,
+  IconDots,
   IconEdit,
   IconLoader2,
   IconPlus,
@@ -308,20 +316,24 @@ export function SortingSetsPanel() {
               <li key={set.guid}>
                 <div
                   className={cn(
-                    "rounded-lg border bg-card p-3 transition-colors",
+                    "relative rounded-lg border bg-card p-3 transition-colors",
                     set.isActive
                       ? "border-primary/60 ring-1 ring-primary/30"
                       : "hover:border-muted-foreground/40",
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
+                    {/* One activation target spanning the card. The action row
+                        is overlaid rather than sharing the row, so the name can
+                        truncate and the stats line stays on one line in a
+                        narrow sidebar. */}
                     <button
                       type="button"
                       onClick={() => handleActivate(set)}
                       disabled={set.isActive || isActivating}
-                      className="flex min-w-0 flex-1 flex-col items-start gap-1.5 text-left disabled:cursor-default"
+                      className="flex w-full min-w-0 flex-col items-start gap-1.5 text-left disabled:cursor-default"
                     >
-                      <span className="flex min-w-0 items-center gap-2">
+                      <span className="flex min-w-0 max-w-full items-center gap-2 pr-9">
                         {isPending && (
                           <IconLoader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />
                         )}
@@ -345,80 +357,61 @@ export function SortingSetsPanel() {
                       </span>
                     </button>
 
-                    <div className="flex shrink-0 items-center gap-1">
-                      {set.isActive && (
-                        <>
-                          <Tooltip>
-                            <TooltipTrigger
-                              render={
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => openDuplicate(set)}
-                                  disabled={isPresetMutating}
-                                >
-                                  <IconCopy />
-                                </Button>
-                              }
-                            />
-                            <TooltipContent>
-                              {t("sortingSets.duplicate")}
-                            </TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger
-                              render={
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => setHistoryOpen(true)}
-                                >
-                                  <IconClockHour3 />
-                                </Button>
-                              }
-                            />
-                            <TooltipContent>
-                              {t("presetSelector.viewHistory")}
-                            </TooltipContent>
-                          </Tooltip>
-                        </>
-                      )}
-                      <Tooltip>
-                        <TooltipTrigger
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openRename(set)}
-                              disabled={isPresetMutating}
-                            >
-                              <IconEdit />
-                            </Button>
-                          }
-                        />
-                        <TooltipContent>
-                          {t("presetSelector.rename")}
-                        </TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setDeleteTarget(set)}
-                              disabled={isPresetMutating || sets.length === 1}
-                            >
-                              <IconTrash />
-                            </Button>
-                          }
-                        />
-                        <TooltipContent>
-                          {sets.length === 1
-                            ? t("sortingSets.cannotDeleteLast")
-                            : t("sortingSets.delete")}
-                        </TooltipContent>
-                      </Tooltip>
+                    <div className="absolute right-2 top-2 shrink-0">
+                      {/* One labelled menu instead of a row of bare icons: the
+                          names are what made these actions findable, and a
+                          narrow sidebar has no room for four icon buttons
+                          beside a set name. */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          className={cn(
+                            buttonVariants({ variant: "ghost", size: "icon" }),
+                            "size-7",
+                          )}
+                          aria-label={t("sortingSets.actionsFor", {
+                            name: set.name,
+                          })}
+                        >
+                          <IconDots className="size-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {set.isActive && (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => openDuplicate(set)}
+                                disabled={isPresetMutating}
+                              >
+                                <IconCopy />
+                                {t("sortingSets.duplicate")}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => setHistoryOpen(true)}
+                              >
+                                <IconClockHour3 />
+                                {t("presetSelector.viewHistory")}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                            </>
+                          )}
+                          <DropdownMenuItem
+                            onClick={() => openRename(set)}
+                            disabled={isPresetMutating}
+                          >
+                            <IconEdit />
+                            {t("presetSelector.rename")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => setDeleteTarget(set)}
+                            disabled={isPresetMutating || sets.length === 1}
+                          >
+                            <IconTrash />
+                            {sets.length === 1
+                              ? t("sortingSets.cannotDeleteLast")
+                              : t("sortingSets.delete")}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </div>

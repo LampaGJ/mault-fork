@@ -98,6 +98,7 @@
     "empty": "No sorting sets yet. Create one to save a bin setup you can reuse.",
     "copyName": "{{name}} (copy)",
     "duplicateTitle": "Duplicate Set",
-    "duplicateDescription": "Saves a copy of the active set, rules and all, under a new name."
+    "duplicateDescription": "Saves a copy of the active set, rules and all, under a new name.",
+    "actionsFor": "Actions for {{name}}"
   }
 }

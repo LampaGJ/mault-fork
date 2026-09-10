@@ -98,6 +98,7 @@
     "empty": "Noch keine Sortier-Sets. Erstelle eines, um eine Fach-Konfiguration wiederzuverwenden.",
     "copyName": "{{name}} (Kopie)",
     "duplicateTitle": "Set duplizieren",
-    "duplicateDescription": "Speichert eine Kopie des aktiven Sets samt Regeln unter einem neuen Namen."
+    "duplicateDescription": "Speichert eine Kopie des aktiven Sets samt Regeln unter einem neuen Namen.",
+    "actionsFor": "Aktionen für {{name}}"
   }
 }
