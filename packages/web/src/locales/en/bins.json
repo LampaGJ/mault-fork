@@ -100,5 +100,15 @@
     "duplicateTitle": "Duplicate Set",
     "duplicateDescription": "Saves a copy of the active set, rules and all, under a new name.",
     "actionsFor": "Actions for {{name}}"
+  },
+  "binMachine": {
+    "title": "Sorter layout",
+    "stage": "Stage",
+    "stageCount": "{{count}} stages",
+    "feed": "Feed",
+    "binLabel": "Bin {{number}}",
+    "catchAll": "Catch-all",
+    "allUnmatched": "All unmatched cards",
+    "empty": "No rules yet"
   }
 }

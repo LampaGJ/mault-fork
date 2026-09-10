@@ -5,6 +5,7 @@ import {
 } from "@/features/bins/api/use-bin-configs";
 import { BinConfigPanel } from "@/features/bins/components/bin-config-panel";
 import { BinList } from "@/features/bins/components/bin-list";
+import { BinMachineLayout } from "@/features/bins/components/bin-machine-layout";
 import { NoGameBanner } from "@/features/bins/components/no-game-banner";
 import { NonEnglishRulesBanner } from "@/features/bins/components/non-english-rules-banner";
 import { PresetSelector } from "@/features/bins/components/preset-selector";
@@ -72,18 +73,23 @@ export default function BinsPage() {
     <MobileBins />
   ) : (
     <div className="grid grid-cols-12 flex-1 min-h-0 overflow-hidden">
-      <section className="col-span-4 lg:col-span-3 overflow-hidden flex flex-col h-full border-r p-2 gap-2 bg-sidebar/70">
+      {/* Sidebar owns which setup is loaded; the machine diagram and the rule
+          editor sit together, since picking a bin off the diagram is what
+          drives the editor. Mobile keeps the flat BinList - a three-column
+          machine does not fit a drawer. */}
+      <section className="col-span-4 lg:col-span-3 overflow-y-auto flex flex-col h-full border-r p-2 gap-2 bg-sidebar/70">
         <CollectionSwitcher />
-        {/* Bounded so a long set list scrolls instead of pushing BinList out of
-            the column. Mobile keeps the compact PresetSelector - the drawer has
-            no room for per-set previews. */}
-        <div className="max-h-[45%] shrink-0 overflow-y-auto">
-          <SortingSetsPanel />
-        </div>
-        <BinList />
+        <SortingSetsPanel />
       </section>
-      <section className="col-span-8 lg:col-span-9 overflow-y-auto max-h-full @container p-4">
-        <BinConfigPanel />
+      <section className="col-span-8 lg:col-span-9 overflow-hidden max-h-full @container">
+        <div className="flex h-full min-h-0 flex-col lg:flex-row">
+          <div className="shrink-0 overflow-y-auto border-b p-3 lg:w-[26rem] lg:border-b-0 lg:border-r">
+            <BinMachineLayout />
+          </div>
+          <div className="min-w-0 flex-1 overflow-y-auto p-4">
+            <BinConfigPanel />
+          </div>
+        </div>
       </section>
     </div>
   );

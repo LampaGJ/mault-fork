@@ -100,5 +100,15 @@
     "duplicateTitle": "Set duplizieren",
     "duplicateDescription": "Speichert eine Kopie des aktiven Sets samt Regeln unter einem neuen Namen.",
     "actionsFor": "Aktionen für {{name}}"
+  },
+  "binMachine": {
+    "title": "Sortierer-Aufbau",
+    "stage": "Stufe",
+    "stageCount": "{{count}} Stufen",
+    "feed": "Einzug",
+    "binLabel": "Fach {{number}}",
+    "catchAll": "Auffang",
+    "allUnmatched": "Alle übrigen Karten",
+    "empty": "Noch keine Regeln"
   }
 }

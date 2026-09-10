@@ -100,5 +100,15 @@
     "duplicateTitle": "Dupliquer l'ensemble",
     "duplicateDescription": "Enregistre une copie de l'ensemble actif, règles comprises, sous un nouveau nom.",
     "actionsFor": "Actions pour {{name}}"
+  },
+  "binMachine": {
+    "title": "Schéma du trieur",
+    "stage": "Étage",
+    "stageCount": "{{count}} étages",
+    "feed": "Entrée",
+    "binLabel": "Bac {{number}}",
+    "catchAll": "Fourre-tout",
+    "allUnmatched": "Toutes les cartes non triées",
+    "empty": "Aucune règle"
   }
 }

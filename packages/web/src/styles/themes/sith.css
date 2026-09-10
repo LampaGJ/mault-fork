@@ -1,0 +1,62 @@
+/*
+ * Sith — dark mode.
+ *
+ * Lifted from the SWU AI trainer dashboard: warm near-black ground, burnished
+ * amber as the tactical-display accent, teal for evaluation/intelligence,
+ * amber-tinted hairlines rather than grey ones.
+ *
+ * To reskin, change the Palette block. Nothing below it needs editing.
+ */
+
+.dark {
+  /* ---- Palette ------------------------------------------------------- */
+  --t-ground: #181510; /* deepest surface, the page itself */
+  --t-surface: #201d16; /* raised surface: cards, popovers */
+  --t-surface-2: #2b2619; /* hover / pressed / secondary fills */
+  --t-surface-3: #3a3222; /* accent fills, selected rows */
+  --t-ink: #d1d3d4; /* primary text */
+  --t-ink-dim: #7f7b7a; /* secondary text */
+  --t-amber: #c8760a; /* primary - tactical display */
+  --t-amber-soft: #e8960e;
+  --t-teal: #0d9488; /* secondary - evaluation */
+  --t-red: #dc2626; /* destructive */
+  --t-blue: #2563eb;
+  --t-green: #16a34a;
+  --t-hairline: rgb(200 170 100 / 14%); /* warm, never neutral grey */
+  --t-hairline-strong: rgb(200 170 100 / 22%);
+  --t-on-accent: #ffffff;
+
+  /* ---- Wiring (maps the palette onto shadcn tokens) ------------------- */
+  --background: var(--t-ground);
+  --foreground: var(--t-ink);
+  --card: var(--t-surface);
+  --card-foreground: var(--t-ink);
+  --popover: var(--t-surface);
+  --popover-foreground: var(--t-ink);
+  --primary: var(--t-amber);
+  --primary-foreground: var(--t-on-accent);
+  --secondary: var(--t-surface-2);
+  --secondary-foreground: var(--t-ink);
+  --muted: var(--t-surface-2);
+  --muted-foreground: var(--t-ink-dim);
+  --accent: var(--t-surface-3);
+  --accent-foreground: var(--t-ink);
+  --destructive: var(--t-red);
+  --destructive-foreground: var(--t-on-accent);
+  --border: var(--t-hairline);
+  --input: var(--t-hairline-strong);
+  --ring: var(--t-amber);
+  --chart-1: var(--t-amber);
+  --chart-2: var(--t-teal);
+  --chart-3: var(--t-blue);
+  --chart-4: var(--t-green);
+  --chart-5: var(--t-ink-dim);
+  --sidebar: #1c1913;
+  --sidebar-foreground: var(--t-ink);
+  --sidebar-primary: var(--t-amber);
+  --sidebar-primary-foreground: var(--t-on-accent);
+  --sidebar-accent: var(--t-surface-3);
+  --sidebar-accent-foreground: var(--t-ink);
+  --sidebar-border: var(--t-hairline);
+  --sidebar-ring: var(--t-amber);
+}
