@@ -46,7 +46,7 @@ This was chosen over adding `keywords`/`traits`/`arena` to the shared
 **`packages/server/src/lib/swu/api-types.ts`** — added the dropped relations and
 scalars to the schema.
 
-**`data/seed/swu-field-definitions.json`** — 5 fields → 24. The original five are
+**`data/seed/swu-field-definitions.json`** — 5 fields → 26. The original five are
 unchanged in shape; operator sets and labels per type match what was there.
 
 | Field | Type | Notes |
@@ -87,23 +87,67 @@ four example bins including first-match-wins ordering.
 
 ## Still open
 
-**Pricing.** `price`/`priceFoil` are still `null` — the SWU API has no pricing.
-TCGplayer no longer grants new API access. TCGCSV (`tcgcsv.com`, free, no key)
-mirrors TCGplayer and covers SWU as category **79**, 32 groups, with
-`lowPrice`/`midPrice`/`highPrice`/`marketPrice` and `Normal`/`Foil` subtypes.
-
-The join is the awkward part and needs a decision before anyone writes the sync:
-TCGCSV gives `Number: "94/264"` plus a group abbreviation, so the key is
-**(expansionCode, cardNumber)** — not `serialCode`. And foil is structurally
-different: TCGplayer treats it as a `subTypeName` on one product, while this
-codebase makes every printing its own card (`08010094` Standard, `08020358`
-Hyperspace, `08320596` Hyperspace Foil).
+**Pricing** is now handled — see the Pricing section below.
 
 **Sync speed.** `fetchCards` pages sequentially at `PAGE_SIZE = 100`, so a full
-sync is ~92 serial requests.
+sync is ~92 serial requests — and the API caps `pageSize` at 250, so 37 would do.
 
 **The 33 MB `data/seed/swu-cards.csv.gz`** is in git history and is most of the
 repo's clone cost. If the sync path works, the seed is redundant.
 
 **`requireOrg` on `/card` routes** tightens auth for all eight games, not just
 SWU. Deliberate (#129), but worth a note in the release.
+
+## Pricing (added)
+
+`lib/swu/prices.ts` fills `price`/`priceFoil` from TCGCSV — free, no key, a daily
+mirror of TCGplayer market prices.
+
+**Why foil is not a scanning problem.** Foil is the same art and frame with a
+different surface, so the camera cannot resolve it — but it does not need to.
+`collection_cards.isFoil` already exists, `card-detail-panel.tsx` already has the
+toggle, and the whole UI already reads `isFoil ? priceFoil : price`. Both prices
+are stored per card and the user flips one checkbox.
+
+Every *other* variant is a separate numbered printing with its own art, so each
+already has its own image vector from the sync and falls out of the scan itself:
+
+| Variant | ASH card numbers | TCGplayer subtype |
+| --- | --- | --- |
+| Standard | 1–264 | Normal |
+| Hyperspace | 4–528 | Normal |
+| Hyperspace Foil | 529–766 | Foil |
+| Showcase | 767–784 | Foil |
+| Standard Prestige | 785–831 | Normal |
+| Foil Prestige | 832–878 | Foil |
+| Serialized Prestige | 879–925 | Foil |
+
+The number ranges are identical on both sides, which is what makes the join work.
+
+**Join key** is `(expansion code, leading digits of Number)` — base-set numbers
+carry a `/total` suffix (`94/264`) and variant printings do not (`529`). Sampled
+750 cards across SOR/JTL/ASH: 100% matched.
+
+**Where genuine ambiguity remains:** older sets have Standard Foils sharing a
+number with the standard card (204 of 750 sampled products are priced as both
+Normal and Foil). Those are exactly the cards the `isFoil` toggle is for. Newer
+sets number their foils separately, so the ambiguity is shrinking. Foil is not
+reliably a premium — SOR Snowspeeder #244 is $0.05 normal / $0.23 foil, but
+plenty of foils sell below their normal counterpart.
+
+An inherently-foil printing (Showcase, Serialized) has no Normal listing, so
+`price` falls back to the foil value rather than rendering blank.
+
+`price` and `price_foil` are also bin fields now, so "bin 5 = anything over $5"
+is a rule like any other.
+
+### Gotcha
+
+TCGCSV answers **401** to a request with no explicit `User-Agent` — which is what
+node's `fetch` sends by default. It uses `CARD_API_HEADERS`. This failed silently
+at first because `attachPrices` swallows errors by design.
+
+### Also found
+
+`pagination[pageSize]` caps at **250**, not 100. `fetchCards` uses 100, so a full
+sync is 92 requests where 37 would do.

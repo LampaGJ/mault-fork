@@ -17,7 +17,10 @@ import {
   getCardValue,
   type BinConfig,
   type FieldMeta,
+  type PlayingCard,
 } from "@magic-vault/shared";
+
+import { attachPrices, __primeCacheForTest } from "../src/lib/swu/prices";
 
 // __dirname, matching bootstrap-swu.ts - tsx transpiles to CJS, where
 // import.meta.dirname is undefined.
@@ -162,4 +165,56 @@ assert.equal(evaluateCardBin(ambusher, keywordOnly, fieldDefinitions)?.binNumber
 const blank = card({ title: "Nothing", keywords: rel(), traits: rel() });
 assert.equal(evaluateCardBin(blank, bins, fieldDefinitions)?.binNumber, 9);
 
-console.log(`ok - ${fieldDefinitions.length} SWU fields, bin rules verified`);
+// tsx transpiles to CJS, so the awaited section needs an explicit entrypoint.
+async function main() {
+  // --- pricing ---------------------------------------------------------------
+  // Primed rather than fetched, so the check stays offline and deterministic.
+  __primeCacheForTest(
+    "ASH",
+    new Map([
+      ["94", { normal: 2.94, foil: null }], // Standard: Normal only
+      ["767", { normal: null, foil: 41.2 }], // Showcase: inherently foil
+      ["19", { normal: 0.18, foil: 0.2 }], // both, the scanner-ambiguous case
+    ]),
+  );
+
+  const priced = [
+    { ...jerjerrod, set: "ASH", collectorNumber: "94", price: null, priceFoil: null },
+    { ...card({ title: "Showcase" }), set: "ASH", collectorNumber: "767", price: null, priceFoil: null },
+    { ...card({ title: "Both" }), set: "ASH", collectorNumber: "19", price: null, priceFoil: null },
+    { ...card({ title: "Unpriced" }), set: "ASH", collectorNumber: "99999", price: null, priceFoil: null },
+  ] as unknown as PlayingCard[];
+
+  await attachPrices(priced);
+  assert.equal(priced[0].price, 2.94);
+  assert.equal(priced[0].priceFoil, null);
+  // An inherently-foil printing falls back to the foil price, so a card with one
+  // real market value never renders blank.
+  assert.equal(priced[1].price, 41.2);
+  assert.equal(priced[1].priceFoil, 41.2);
+  assert.equal(priced[2].price, 0.18);
+  assert.equal(priced[2].priceFoil, 0.2);
+  // No TCGplayer row -> stays null rather than throwing.
+  assert.equal(priced[3].price, null);
+
+  // Price is a sortable bin field, so "everything over $5" is a rule.
+  const priceBin: BinConfig[] = [
+    {
+      guid: "bin-value",
+      binNumber: 1,
+      rules: {
+        id: "gp",
+        combinator: "and",
+        conditions: [{ id: "cp", field: "price", operator: "gt", value: 5 }],
+      },
+    },
+    { guid: "bin-rest", binNumber: 2, rules: { id: "gr", combinator: "and", conditions: [] }, isCatchAll: true },
+  ];
+  assert.equal(evaluateCardBin(priced[1], priceBin, fieldDefinitions)?.binNumber, 1);
+  assert.equal(evaluateCardBin(priced[2], priceBin, fieldDefinitions)?.binNumber, 2);
+
+  console.log(`ok - ${fieldDefinitions.length} SWU fields, bin rules and pricing verified`);
+
+}
+
+main();

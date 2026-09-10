@@ -4,6 +4,7 @@ import { fetchCardApi } from "../card-search/fetch";
 import type { CardSearchAdapter } from "../card-search/types";
 import { validateQuery } from "../card-search/validate";
 import { SwuCardListResponse, SwuCard } from "./api-types";
+import { attachPrices } from "./prices";
 
 export const SWU_DEFAULT_URL = "https://admin.starwarsunlimited.com/api/card-list";
 
@@ -111,10 +112,14 @@ export async function Search(
   }
 
   const rows = extractRows(await response.json());
+  const cards = rows.map(normalizeSwuCard);
+  // SWU's API carries no pricing; filled from TCGCSV. Never throws - a pricing
+  // outage leaves prices null rather than failing the search.
+  await attachPrices(cards);
 
   return {
     message: "Cards successfully retrieved.",
-    data: rows.map(normalizeSwuCard),
+    data: cards,
     success: true,
   };
 }
@@ -157,10 +162,13 @@ export async function SearchById(
     return { success: false, message: `Card ${id} not found.` };
   }
 
+  const card = normalizeSwuCard(raw);
+  await attachPrices([card]);
+
   return {
     success: true,
     message: "Successfully fetched card by id.",
-    data: normalizeSwuCard(raw),
+    data: card,
   };
 }
 

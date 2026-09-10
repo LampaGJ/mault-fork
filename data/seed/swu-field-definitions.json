@@ -1192,6 +1192,86 @@
     ]
   },
   {
+    "path": "price",
+    "type": "numeric",
+    "field": "price",
+    "label": "Market Price (USD)",
+    "operators": [
+      {
+        "label": "equals",
+        "value": "equals"
+      },
+      {
+        "label": "does not equal",
+        "value": "not_equals"
+      },
+      {
+        "label": "greater than",
+        "value": "gt"
+      },
+      {
+        "label": "greater than or equal",
+        "value": "gte"
+      },
+      {
+        "label": "less than",
+        "value": "lt"
+      },
+      {
+        "label": "less than or equal",
+        "value": "lte"
+      },
+      {
+        "label": "is unknown",
+        "value": "is_null"
+      },
+      {
+        "label": "is known",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "priceFoil",
+    "type": "numeric",
+    "field": "price_foil",
+    "label": "Foil Market Price (USD)",
+    "operators": [
+      {
+        "label": "equals",
+        "value": "equals"
+      },
+      {
+        "label": "does not equal",
+        "value": "not_equals"
+      },
+      {
+        "label": "greater than",
+        "value": "gt"
+      },
+      {
+        "label": "greater than or equal",
+        "value": "gte"
+      },
+      {
+        "label": "less than",
+        "value": "lt"
+      },
+      {
+        "label": "less than or equal",
+        "value": "lte"
+      },
+      {
+        "label": "is unknown",
+        "value": "is_null"
+      },
+      {
+        "label": "is known",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
     "path": "attributes.unique",
     "type": "enum",
     "field": "unique",
