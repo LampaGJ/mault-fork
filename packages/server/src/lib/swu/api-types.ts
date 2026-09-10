@@ -28,6 +28,19 @@ const AspectRelation = z.object({
   data: z.array(RelationData),
 }).optional();
 
+// keywords/traits/arenas are first-class relations on the SWU API, not prose to
+// be parsed out of `text` - confirmed against the live endpoint, which returns
+// 48 attributes per card. z.object() strips unrecognized keys silently, so these
+// were being dropped before they ever reached the bin rule engine (the same way
+// expansion.code was missed earlier). Shaped like AspectRelation: a data array of
+// { attributes: { name } }.
+// Vocabulary as of ASH: 15 keywords, 57 traits, 2 arenas. Names come back in
+// Title Case ("Ambush", "Bounty Hunter", "Ground") and bin conditions compare
+// exact strings, so field-definition options must match that casing.
+const NamedListRelation = z.object({
+  data: z.array(RelationData),
+}).optional();
+
 // expansion has both `name` (e.g. "Spark of Rebellion") and `code` (e.g.
 // "SOR") - a separate schema from the plain-`name`-only relations above,
 // since z.object() silently strips unrecognized keys and this field was
@@ -116,6 +129,10 @@ export const SwuCardAttributes = z.object({
   cost: z.number().nullable().optional(),
   hp: z.number().nullable().optional(),
   power: z.number().nullable().optional(),
+  // Pilot/upgrade cards contribute these to the unit they attach to.
+  upgradeHp: z.number().nullable().optional(),
+  upgradePower: z.number().nullable().optional(),
+  rules: z.string().nullable().optional(),
   unique: z.boolean(),
   hyperspace: z.boolean(),
   showcase: z.boolean().nullable().optional(),
@@ -124,6 +141,9 @@ export const SwuCardAttributes = z.object({
   type2: SimpleRelationOptional,
   rarity: SimpleRelation,
   aspects: AspectRelation,
+  keywords: NamedListRelation,
+  traits: NamedListRelation,
+  arenas: NamedListRelation,
   artFront: ImageRelation,
   artBack: ImageRelation,
   expansion: ExpansionRelation,

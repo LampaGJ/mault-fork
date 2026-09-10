@@ -1,1 +1,1362 @@
-[{"path": "attributes.type.data.attributes.name", "type": "enum", "field": "type_name", "label": "Card Type", "options": [{"label": "Base", "value": "Base"}, {"label": "Event", "value": "Event"}, {"label": "Leader", "value": "Leader"}, {"label": "Unit", "value": "Unit"}, {"label": "Upgrade", "value": "Upgrade"}], "operators": [{"label": "is any of", "value": "in"}, {"label": "is none of", "value": "not_in"}, {"label": "equals", "value": "equals"}, {"label": "does not equal", "value": "not_equals"}, {"label": "is empty", "value": "is_null"}, {"label": "is not empty", "value": "is_not_null"}]}, {"path": "attributes.rarity.data.attributes.name", "type": "enum", "field": "rarity", "label": "Rarity", "options": [{"label": "Common", "value": "Common"}, {"label": "Uncommon", "value": "Uncommon"}, {"label": "Rare", "value": "Rare"}, {"label": "Legendary", "value": "Legendary"}, {"label": "Special", "value": "Special"}], "operators": [{"label": "is any of", "value": "in"}, {"label": "is none of", "value": "not_in"}, {"label": "equals", "value": "equals"}, {"label": "does not equal", "value": "not_equals"}, {"label": "is empty", "value": "is_null"}, {"label": "is not empty", "value": "is_not_null"}]}, {"path": "colorIdentity", "type": "set", "field": "aspects", "label": "Aspects", "options": [{"label": "Aggression", "value": "Aggression"}, {"label": "Command", "value": "Command"}, {"label": "Cunning", "value": "Cunning"}, {"label": "Heroism", "value": "Heroism"}, {"label": "Vigilance", "value": "Vigilance"}, {"label": "Villainy", "value": "Villainy"}], "operators": [{"label": "contains any of", "value": "contains_any"}, {"label": "contains all of", "value": "contains_all"}, {"label": "contains none of", "value": "contains_none"}, {"label": "is exactly", "value": "equals"}, {"label": "is not exactly", "value": "not_equals"}, {"label": "is empty", "value": "is_null"}, {"label": "is not empty", "value": "is_not_null"}]}, {"path": "attributes.cost", "type": "numeric", "field": "cost", "label": "Cost", "operators": [{"label": "equals", "value": "equals"}, {"label": "does not equal", "value": "not_equals"}, {"label": "greater than", "value": "gt"}, {"label": "greater than or equal", "value": "gte"}, {"label": "less than", "value": "lt"}, {"label": "less than or equal", "value": "lte"}, {"label": "is unknown", "value": "is_null"}, {"label": "is known", "value": "is_not_null"}]}, {"path": "attributes.expansion.data.attributes.name", "type": "string", "field": "expansion", "label": "Expansion", "operators": [{"label": "contains", "value": "contains"}, {"label": "does not contain", "value": "not_contains"}, {"label": "starts with", "value": "starts_with"}, {"label": "ends with", "value": "ends_with"}, {"label": "equals", "value": "equals"}, {"label": "does not equal", "value": "not_equals"}, {"label": "is empty", "value": "is_null"}, {"label": "is not empty", "value": "is_not_null"}]}]
+[
+  {
+    "path": "attributes.type.data.attributes.name",
+    "type": "enum",
+    "field": "type_name",
+    "label": "Card Type",
+    "options": [
+      {
+        "label": "Base",
+        "value": "Base"
+      },
+      {
+        "label": "Event",
+        "value": "Event"
+      },
+      {
+        "label": "Leader",
+        "value": "Leader"
+      },
+      {
+        "label": "Token",
+        "value": "Token"
+      },
+      {
+        "label": "Unit",
+        "value": "Unit"
+      },
+      {
+        "label": "Upgrade",
+        "value": "Upgrade"
+      }
+    ],
+    "operators": [
+      {
+        "label": "is any of",
+        "value": "in"
+      },
+      {
+        "label": "is none of",
+        "value": "not_in"
+      },
+      {
+        "label": "equals",
+        "value": "equals"
+      },
+      {
+        "label": "does not equal",
+        "value": "not_equals"
+      },
+      {
+        "label": "is empty",
+        "value": "is_null"
+      },
+      {
+        "label": "is not empty",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.rarity.data.attributes.name",
+    "type": "enum",
+    "field": "rarity",
+    "label": "Rarity",
+    "options": [
+      {
+        "label": "Common",
+        "value": "Common"
+      },
+      {
+        "label": "Uncommon",
+        "value": "Uncommon"
+      },
+      {
+        "label": "Rare",
+        "value": "Rare"
+      },
+      {
+        "label": "Legendary",
+        "value": "Legendary"
+      },
+      {
+        "label": "Special",
+        "value": "Special"
+      }
+    ],
+    "operators": [
+      {
+        "label": "is any of",
+        "value": "in"
+      },
+      {
+        "label": "is none of",
+        "value": "not_in"
+      },
+      {
+        "label": "equals",
+        "value": "equals"
+      },
+      {
+        "label": "does not equal",
+        "value": "not_equals"
+      },
+      {
+        "label": "is empty",
+        "value": "is_null"
+      },
+      {
+        "label": "is not empty",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "colorIdentity",
+    "type": "set",
+    "field": "aspects",
+    "label": "Aspects",
+    "options": [
+      {
+        "label": "Aggression",
+        "value": "Aggression"
+      },
+      {
+        "label": "Command",
+        "value": "Command"
+      },
+      {
+        "label": "Cunning",
+        "value": "Cunning"
+      },
+      {
+        "label": "Heroism",
+        "value": "Heroism"
+      },
+      {
+        "label": "Vigilance",
+        "value": "Vigilance"
+      },
+      {
+        "label": "Villainy",
+        "value": "Villainy"
+      }
+    ],
+    "operators": [
+      {
+        "label": "contains any of",
+        "value": "contains_any"
+      },
+      {
+        "label": "contains all of",
+        "value": "contains_all"
+      },
+      {
+        "label": "contains none of",
+        "value": "contains_none"
+      },
+      {
+        "label": "is exactly",
+        "value": "equals"
+      },
+      {
+        "label": "is not exactly",
+        "value": "not_equals"
+      },
+      {
+        "label": "is empty",
+        "value": "is_null"
+      },
+      {
+        "label": "is not empty",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.cost",
+    "type": "numeric",
+    "field": "cost",
+    "label": "Cost",
+    "operators": [
+      {
+        "label": "equals",
+        "value": "equals"
+      },
+      {
+        "label": "does not equal",
+        "value": "not_equals"
+      },
+      {
+        "label": "greater than",
+        "value": "gt"
+      },
+      {
+        "label": "greater than or equal",
+        "value": "gte"
+      },
+      {
+        "label": "less than",
+        "value": "lt"
+      },
+      {
+        "label": "less than or equal",
+        "value": "lte"
+      },
+      {
+        "label": "is unknown",
+        "value": "is_null"
+      },
+      {
+        "label": "is known",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.expansion.data.attributes.name",
+    "type": "string",
+    "field": "expansion",
+    "label": "Expansion",
+    "operators": [
+      {
+        "label": "contains",
+        "value": "contains"
+      },
+      {
+        "label": "does not contain",
+        "value": "not_contains"
+      },
+      {
+        "label": "starts with",
+        "value": "starts_with"
+      },
+      {
+        "label": "ends with",
+        "value": "ends_with"
+      },
+      {
+        "label": "equals",
+        "value": "equals"
+      },
+      {
+        "label": "does not equal",
+        "value": "not_equals"
+      },
+      {
+        "label": "is empty",
+        "value": "is_null"
+      },
+      {
+        "label": "is not empty",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.keywords.data.attributes.name",
+    "type": "set",
+    "field": "keywords",
+    "label": "Keywords",
+    "options": [
+      {
+        "label": "Ambush",
+        "value": "Ambush"
+      },
+      {
+        "label": "Bounty",
+        "value": "Bounty"
+      },
+      {
+        "label": "Coordinate",
+        "value": "Coordinate"
+      },
+      {
+        "label": "Exploit",
+        "value": "Exploit"
+      },
+      {
+        "label": "Grit",
+        "value": "Grit"
+      },
+      {
+        "label": "Hidden",
+        "value": "Hidden"
+      },
+      {
+        "label": "Overwhelm",
+        "value": "Overwhelm"
+      },
+      {
+        "label": "Piloting",
+        "value": "Piloting"
+      },
+      {
+        "label": "Plot",
+        "value": "Plot"
+      },
+      {
+        "label": "Raid",
+        "value": "Raid"
+      },
+      {
+        "label": "Restore",
+        "value": "Restore"
+      },
+      {
+        "label": "Saboteur",
+        "value": "Saboteur"
+      },
+      {
+        "label": "Sentinel",
+        "value": "Sentinel"
+      },
+      {
+        "label": "Shielded",
+        "value": "Shielded"
+      },
+      {
+        "label": "Smuggle",
+        "value": "Smuggle"
+      }
+    ],
+    "operators": [
+      {
+        "label": "contains any of",
+        "value": "contains_any"
+      },
+      {
+        "label": "contains all of",
+        "value": "contains_all"
+      },
+      {
+        "label": "contains none of",
+        "value": "contains_none"
+      },
+      {
+        "label": "is exactly",
+        "value": "equals"
+      },
+      {
+        "label": "is not exactly",
+        "value": "not_equals"
+      },
+      {
+        "label": "is empty",
+        "value": "is_null"
+      },
+      {
+        "label": "is not empty",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.traits.data.attributes.name",
+    "type": "set",
+    "field": "traits",
+    "label": "Traits",
+    "options": [
+      {
+        "label": "Armor",
+        "value": "Armor"
+      },
+      {
+        "label": "Bounty",
+        "value": "Bounty"
+      },
+      {
+        "label": "Bounty Hunter",
+        "value": "Bounty Hunter"
+      },
+      {
+        "label": "Capital Ship",
+        "value": "Capital Ship"
+      },
+      {
+        "label": "Clone",
+        "value": "Clone"
+      },
+      {
+        "label": "Condition",
+        "value": "Condition"
+      },
+      {
+        "label": "Creature",
+        "value": "Creature"
+      },
+      {
+        "label": "Disaster",
+        "value": "Disaster"
+      },
+      {
+        "label": "Droid",
+        "value": "Droid"
+      },
+      {
+        "label": "Ewok",
+        "value": "Ewok"
+      },
+      {
+        "label": "Fighter",
+        "value": "Fighter"
+      },
+      {
+        "label": "First Order",
+        "value": "First Order"
+      },
+      {
+        "label": "Force",
+        "value": "Force"
+      },
+      {
+        "label": "Fringe",
+        "value": "Fringe"
+      },
+      {
+        "label": "Gambit",
+        "value": "Gambit"
+      },
+      {
+        "label": "Gungan",
+        "value": "Gungan"
+      },
+      {
+        "label": "Hutt",
+        "value": "Hutt"
+      },
+      {
+        "label": "Imperial",
+        "value": "Imperial"
+      },
+      {
+        "label": "Innate",
+        "value": "Innate"
+      },
+      {
+        "label": "Inquisitor",
+        "value": "Inquisitor"
+      },
+      {
+        "label": "Item",
+        "value": "Item"
+      },
+      {
+        "label": "Jawa",
+        "value": "Jawa"
+      },
+      {
+        "label": "Jedi",
+        "value": "Jedi"
+      },
+      {
+        "label": "Kaminoan",
+        "value": "Kaminoan"
+      },
+      {
+        "label": "Law",
+        "value": "Law"
+      },
+      {
+        "label": "Learned",
+        "value": "Learned"
+      },
+      {
+        "label": "Lightsaber",
+        "value": "Lightsaber"
+      },
+      {
+        "label": "Mandalorian",
+        "value": "Mandalorian"
+      },
+      {
+        "label": "Modification",
+        "value": "Modification"
+      },
+      {
+        "label": "Naboo",
+        "value": "Naboo"
+      },
+      {
+        "label": "New Republic",
+        "value": "New Republic"
+      },
+      {
+        "label": "Night",
+        "value": "Night"
+      },
+      {
+        "label": "Nihil",
+        "value": "Nihil"
+      },
+      {
+        "label": "Official",
+        "value": "Official"
+      },
+      {
+        "label": "Pilot",
+        "value": "Pilot"
+      },
+      {
+        "label": "Plan",
+        "value": "Plan"
+      },
+      {
+        "label": "Rebel",
+        "value": "Rebel"
+      },
+      {
+        "label": "Republic",
+        "value": "Republic"
+      },
+      {
+        "label": "Resistance",
+        "value": "Resistance"
+      },
+      {
+        "label": "Separatist",
+        "value": "Separatist"
+      },
+      {
+        "label": "Sith",
+        "value": "Sith"
+      },
+      {
+        "label": "Spectre",
+        "value": "Spectre"
+      },
+      {
+        "label": "Speeder",
+        "value": "Speeder"
+      },
+      {
+        "label": "Supply",
+        "value": "Supply"
+      },
+      {
+        "label": "Tactic",
+        "value": "Tactic"
+      },
+      {
+        "label": "Tank",
+        "value": "Tank"
+      },
+      {
+        "label": "Transport",
+        "value": "Transport"
+      },
+      {
+        "label": "Trick",
+        "value": "Trick"
+      },
+      {
+        "label": "Trooper",
+        "value": "Trooper"
+      },
+      {
+        "label": "Tusken",
+        "value": "Tusken"
+      },
+      {
+        "label": "Twi'lek",
+        "value": "Twi'lek"
+      },
+      {
+        "label": "Undead",
+        "value": "Undead"
+      },
+      {
+        "label": "Underworld",
+        "value": "Underworld"
+      },
+      {
+        "label": "Vehicle",
+        "value": "Vehicle"
+      },
+      {
+        "label": "Walker",
+        "value": "Walker"
+      },
+      {
+        "label": "Weapon",
+        "value": "Weapon"
+      },
+      {
+        "label": "Wookiee",
+        "value": "Wookiee"
+      }
+    ],
+    "operators": [
+      {
+        "label": "contains any of",
+        "value": "contains_any"
+      },
+      {
+        "label": "contains all of",
+        "value": "contains_all"
+      },
+      {
+        "label": "contains none of",
+        "value": "contains_none"
+      },
+      {
+        "label": "is exactly",
+        "value": "equals"
+      },
+      {
+        "label": "is not exactly",
+        "value": "not_equals"
+      },
+      {
+        "label": "is empty",
+        "value": "is_null"
+      },
+      {
+        "label": "is not empty",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.arenas.data.attributes.name",
+    "type": "set",
+    "field": "arenas",
+    "label": "Arena",
+    "options": [
+      {
+        "label": "Ground",
+        "value": "Ground"
+      },
+      {
+        "label": "Space",
+        "value": "Space"
+      }
+    ],
+    "operators": [
+      {
+        "label": "contains any of",
+        "value": "contains_any"
+      },
+      {
+        "label": "contains all of",
+        "value": "contains_all"
+      },
+      {
+        "label": "contains none of",
+        "value": "contains_none"
+      },
+      {
+        "label": "is exactly",
+        "value": "equals"
+      },
+      {
+        "label": "is not exactly",
+        "value": "not_equals"
+      },
+      {
+        "label": "is empty",
+        "value": "is_null"
+      },
+      {
+        "label": "is not empty",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.variantTypes.data.attributes.name",
+    "type": "set",
+    "field": "variant_types",
+    "label": "Variant / Printing",
+    "options": [
+      {
+        "label": "Standard",
+        "value": "Standard"
+      },
+      {
+        "label": "Standard Foil",
+        "value": "Standard Foil"
+      },
+      {
+        "label": "Hyperspace",
+        "value": "Hyperspace"
+      },
+      {
+        "label": "Hyperspace Foil",
+        "value": "Hyperspace Foil"
+      },
+      {
+        "label": "Showcase",
+        "value": "Showcase"
+      },
+      {
+        "label": "Standard Prestige",
+        "value": "Standard Prestige"
+      },
+      {
+        "label": "Foil Prestige",
+        "value": "Foil Prestige"
+      },
+      {
+        "label": "Serialized Prestige",
+        "value": "Serialized Prestige"
+      }
+    ],
+    "operators": [
+      {
+        "label": "contains any of",
+        "value": "contains_any"
+      },
+      {
+        "label": "contains all of",
+        "value": "contains_all"
+      },
+      {
+        "label": "contains none of",
+        "value": "contains_none"
+      },
+      {
+        "label": "is exactly",
+        "value": "equals"
+      },
+      {
+        "label": "is not exactly",
+        "value": "not_equals"
+      },
+      {
+        "label": "is empty",
+        "value": "is_null"
+      },
+      {
+        "label": "is not empty",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.expansion.data.attributes.code",
+    "type": "string",
+    "field": "expansion_code",
+    "label": "Expansion Code",
+    "operators": [
+      {
+        "label": "contains",
+        "value": "contains"
+      },
+      {
+        "label": "does not contain",
+        "value": "not_contains"
+      },
+      {
+        "label": "starts with",
+        "value": "starts_with"
+      },
+      {
+        "label": "ends with",
+        "value": "ends_with"
+      },
+      {
+        "label": "equals",
+        "value": "equals"
+      },
+      {
+        "label": "does not equal",
+        "value": "not_equals"
+      },
+      {
+        "label": "is empty",
+        "value": "is_null"
+      },
+      {
+        "label": "is not empty",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.type2.data.attributes.name",
+    "type": "enum",
+    "field": "type2_name",
+    "label": "Secondary Type",
+    "options": [
+      {
+        "label": "Base",
+        "value": "Base"
+      },
+      {
+        "label": "Event",
+        "value": "Event"
+      },
+      {
+        "label": "Leader",
+        "value": "Leader"
+      },
+      {
+        "label": "Token",
+        "value": "Token"
+      },
+      {
+        "label": "Unit",
+        "value": "Unit"
+      },
+      {
+        "label": "Upgrade",
+        "value": "Upgrade"
+      }
+    ],
+    "operators": [
+      {
+        "label": "is any of",
+        "value": "in"
+      },
+      {
+        "label": "is none of",
+        "value": "not_in"
+      },
+      {
+        "label": "equals",
+        "value": "equals"
+      },
+      {
+        "label": "does not equal",
+        "value": "not_equals"
+      },
+      {
+        "label": "is empty",
+        "value": "is_null"
+      },
+      {
+        "label": "is not empty",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.power",
+    "type": "numeric",
+    "field": "power",
+    "label": "Power",
+    "operators": [
+      {
+        "label": "equals",
+        "value": "equals"
+      },
+      {
+        "label": "does not equal",
+        "value": "not_equals"
+      },
+      {
+        "label": "greater than",
+        "value": "gt"
+      },
+      {
+        "label": "greater than or equal",
+        "value": "gte"
+      },
+      {
+        "label": "less than",
+        "value": "lt"
+      },
+      {
+        "label": "less than or equal",
+        "value": "lte"
+      },
+      {
+        "label": "is unknown",
+        "value": "is_null"
+      },
+      {
+        "label": "is known",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.hp",
+    "type": "numeric",
+    "field": "hp",
+    "label": "HP",
+    "operators": [
+      {
+        "label": "equals",
+        "value": "equals"
+      },
+      {
+        "label": "does not equal",
+        "value": "not_equals"
+      },
+      {
+        "label": "greater than",
+        "value": "gt"
+      },
+      {
+        "label": "greater than or equal",
+        "value": "gte"
+      },
+      {
+        "label": "less than",
+        "value": "lt"
+      },
+      {
+        "label": "less than or equal",
+        "value": "lte"
+      },
+      {
+        "label": "is unknown",
+        "value": "is_null"
+      },
+      {
+        "label": "is known",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.upgradePower",
+    "type": "numeric",
+    "field": "upgrade_power",
+    "label": "Upgrade Power",
+    "operators": [
+      {
+        "label": "equals",
+        "value": "equals"
+      },
+      {
+        "label": "does not equal",
+        "value": "not_equals"
+      },
+      {
+        "label": "greater than",
+        "value": "gt"
+      },
+      {
+        "label": "greater than or equal",
+        "value": "gte"
+      },
+      {
+        "label": "less than",
+        "value": "lt"
+      },
+      {
+        "label": "less than or equal",
+        "value": "lte"
+      },
+      {
+        "label": "is unknown",
+        "value": "is_null"
+      },
+      {
+        "label": "is known",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.upgradeHp",
+    "type": "numeric",
+    "field": "upgrade_hp",
+    "label": "Upgrade HP",
+    "operators": [
+      {
+        "label": "equals",
+        "value": "equals"
+      },
+      {
+        "label": "does not equal",
+        "value": "not_equals"
+      },
+      {
+        "label": "greater than",
+        "value": "gt"
+      },
+      {
+        "label": "greater than or equal",
+        "value": "gte"
+      },
+      {
+        "label": "less than",
+        "value": "lt"
+      },
+      {
+        "label": "less than or equal",
+        "value": "lte"
+      },
+      {
+        "label": "is unknown",
+        "value": "is_null"
+      },
+      {
+        "label": "is known",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.cardNumber",
+    "type": "numeric",
+    "field": "card_number",
+    "label": "Card Number",
+    "operators": [
+      {
+        "label": "equals",
+        "value": "equals"
+      },
+      {
+        "label": "does not equal",
+        "value": "not_equals"
+      },
+      {
+        "label": "greater than",
+        "value": "gt"
+      },
+      {
+        "label": "greater than or equal",
+        "value": "gte"
+      },
+      {
+        "label": "less than",
+        "value": "lt"
+      },
+      {
+        "label": "less than or equal",
+        "value": "lte"
+      },
+      {
+        "label": "is unknown",
+        "value": "is_null"
+      },
+      {
+        "label": "is known",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.title",
+    "type": "string",
+    "field": "title",
+    "label": "Title",
+    "operators": [
+      {
+        "label": "contains",
+        "value": "contains"
+      },
+      {
+        "label": "does not contain",
+        "value": "not_contains"
+      },
+      {
+        "label": "starts with",
+        "value": "starts_with"
+      },
+      {
+        "label": "ends with",
+        "value": "ends_with"
+      },
+      {
+        "label": "equals",
+        "value": "equals"
+      },
+      {
+        "label": "does not equal",
+        "value": "not_equals"
+      },
+      {
+        "label": "is empty",
+        "value": "is_null"
+      },
+      {
+        "label": "is not empty",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.subtitle",
+    "type": "string",
+    "field": "subtitle",
+    "label": "Subtitle",
+    "operators": [
+      {
+        "label": "contains",
+        "value": "contains"
+      },
+      {
+        "label": "does not contain",
+        "value": "not_contains"
+      },
+      {
+        "label": "starts with",
+        "value": "starts_with"
+      },
+      {
+        "label": "ends with",
+        "value": "ends_with"
+      },
+      {
+        "label": "equals",
+        "value": "equals"
+      },
+      {
+        "label": "does not equal",
+        "value": "not_equals"
+      },
+      {
+        "label": "is empty",
+        "value": "is_null"
+      },
+      {
+        "label": "is not empty",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.artist",
+    "type": "string",
+    "field": "artist",
+    "label": "Artist",
+    "operators": [
+      {
+        "label": "contains",
+        "value": "contains"
+      },
+      {
+        "label": "does not contain",
+        "value": "not_contains"
+      },
+      {
+        "label": "starts with",
+        "value": "starts_with"
+      },
+      {
+        "label": "ends with",
+        "value": "ends_with"
+      },
+      {
+        "label": "equals",
+        "value": "equals"
+      },
+      {
+        "label": "does not equal",
+        "value": "not_equals"
+      },
+      {
+        "label": "is empty",
+        "value": "is_null"
+      },
+      {
+        "label": "is not empty",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.text",
+    "type": "string",
+    "field": "card_text",
+    "label": "Card Text",
+    "operators": [
+      {
+        "label": "contains",
+        "value": "contains"
+      },
+      {
+        "label": "does not contain",
+        "value": "not_contains"
+      },
+      {
+        "label": "starts with",
+        "value": "starts_with"
+      },
+      {
+        "label": "ends with",
+        "value": "ends_with"
+      },
+      {
+        "label": "equals",
+        "value": "equals"
+      },
+      {
+        "label": "does not equal",
+        "value": "not_equals"
+      },
+      {
+        "label": "is empty",
+        "value": "is_null"
+      },
+      {
+        "label": "is not empty",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.unique",
+    "type": "enum",
+    "field": "unique",
+    "label": "Unique",
+    "options": [
+      {
+        "label": "true",
+        "value": "true"
+      },
+      {
+        "label": "false",
+        "value": "false"
+      }
+    ],
+    "operators": [
+      {
+        "label": "is any of",
+        "value": "in"
+      },
+      {
+        "label": "is none of",
+        "value": "not_in"
+      },
+      {
+        "label": "equals",
+        "value": "equals"
+      },
+      {
+        "label": "does not equal",
+        "value": "not_equals"
+      },
+      {
+        "label": "is empty",
+        "value": "is_null"
+      },
+      {
+        "label": "is not empty",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.hasFoil",
+    "type": "enum",
+    "field": "has_foil",
+    "label": "Has Foil",
+    "options": [
+      {
+        "label": "true",
+        "value": "true"
+      },
+      {
+        "label": "false",
+        "value": "false"
+      }
+    ],
+    "operators": [
+      {
+        "label": "is any of",
+        "value": "in"
+      },
+      {
+        "label": "is none of",
+        "value": "not_in"
+      },
+      {
+        "label": "equals",
+        "value": "equals"
+      },
+      {
+        "label": "does not equal",
+        "value": "not_equals"
+      },
+      {
+        "label": "is empty",
+        "value": "is_null"
+      },
+      {
+        "label": "is not empty",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.hyperspace",
+    "type": "enum",
+    "field": "hyperspace",
+    "label": "Hyperspace",
+    "options": [
+      {
+        "label": "true",
+        "value": "true"
+      },
+      {
+        "label": "false",
+        "value": "false"
+      }
+    ],
+    "operators": [
+      {
+        "label": "is any of",
+        "value": "in"
+      },
+      {
+        "label": "is none of",
+        "value": "not_in"
+      },
+      {
+        "label": "equals",
+        "value": "equals"
+      },
+      {
+        "label": "does not equal",
+        "value": "not_equals"
+      },
+      {
+        "label": "is empty",
+        "value": "is_null"
+      },
+      {
+        "label": "is not empty",
+        "value": "is_not_null"
+      }
+    ]
+  },
+  {
+    "path": "attributes.showcase",
+    "type": "enum",
+    "field": "showcase",
+    "label": "Showcase",
+    "options": [
+      {
+        "label": "true",
+        "value": "true"
+      },
+      {
+        "label": "false",
+        "value": "false"
+      }
+    ],
+    "operators": [
+      {
+        "label": "is any of",
+        "value": "in"
+      },
+      {
+        "label": "is none of",
+        "value": "not_in"
+      },
+      {
+        "label": "equals",
+        "value": "equals"
+      },
+      {
+        "label": "does not equal",
+        "value": "not_equals"
+      },
+      {
+        "label": "is empty",
+        "value": "is_null"
+      },
+      {
+        "label": "is not empty",
+        "value": "is_not_null"
+      }
+    ]
+  }
+]

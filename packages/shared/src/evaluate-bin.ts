@@ -13,6 +13,22 @@ export type SourceCard = object;
 
 export function getByPath(card: SourceCard, path: string): unknown {
   return path.split(".").reduce<unknown>((value, key) => {
+    // Strapi-style relations nest as `{ data: [{ attributes: { name } }] }`, so a
+    // path segment that lands on an array applies to every element instead:
+    // `attributes.traits.data.attributes.name` yields string[], which is what a
+    // `set`-type field needs. Additive - before this, an array segment returned
+    // undefined, and no pre-existing field definition path crosses an array.
+    // An empty relation stays [] (not undefined) so `is_null` and
+    // `contains_none` still match a card that simply has no keywords.
+    if (Array.isArray(value)) {
+      return value
+        .map((item) =>
+          item && typeof item === "object" && key in item
+            ? (item as Record<string, unknown>)[key]
+            : undefined,
+        )
+        .filter((item) => item !== undefined);
+    }
     if (value && typeof value === "object" && key in value) {
       return (value as Record<string, unknown>)[key];
     }
