@@ -151,3 +151,66 @@ at first because `attachPrices` swallows errors by design.
 
 `pagination[pageSize]` caps at **250**, not 100. `fetchCards` uses 100, so a full
 sync is 92 requests where 37 would do.
+
+## Card images — the CDN blocks server-side fetches
+
+`cdn.starwarsunlimited.com` (AmazonS3) answers **403 AccessDenied** to node's
+`fetch` under every header combination tried: `MagicVault/1.0`, a browser
+User-Agent, a Referer, a full Chrome header set, and both the doubled and tidied
+slash. A real Chromium loads the identical URL. So it rejects the client, not the
+URL.
+
+This is not only a display problem. `sync-job.ts` fetches `imageUrl` to build the
+embedding every scan is matched against, so the entire SWU catalog vectorized to
+nothing.
+
+`lib/swu/images.ts` routes both paths through the SWU site's own Next.js image
+endpoint, which does serve server-side clients:
+
+```
+https://starwarsunlimited.com/_next/image?url=<encoded cdn url>&w=384&q=75
+```
+
+Two constraints, both of which return 400 or 403 if broken:
+
+- **The doubled slash in the CDN url is load-bearing.** The endpoint validates
+  against the exact registered url and rejects the cleaned-up one.
+- **Width and quality are allowlisted.** `w=384&q=75` works; `q=80` does not.
+  384 is the smallest allowed width at or above SigLIP's 224px input.
+
+Verified end to end: fetch returns 200 / 54 KB / `image/png`, and
+`vectorizeImageFromBuffer` produces a 768-dimensional embedding from it.
+
+`starwarsunlimited.com` is added to `ALLOWED_IMAGE_HOSTS` for the display path.
+
+## Variant separability
+
+Measured cosine similarity between SigLIP embeddings of the six ASH Darth Vader
+printings:
+
+| Pair | Similarity |
+| --- | --- |
+| Prestige ↔ Serialized | 0.9929 |
+| Prestige ↔ Prestige Foil | 0.9898 |
+| Prestige Foil ↔ Serialized | 0.9848 |
+| Hyperspace ↔ Hyperspace Foil | 0.9784 |
+| Standard ↔ Hyperspace | 0.9596 |
+
+The three Prestige tiers cluster at 0.985–0.993, much tighter than the gap to any
+other printing, so nearest-neighbour will not reliably separate them — and the
+price spread is real (Standard Prestige $9.41, Prestige Foil $17.13, Serialized
+unlisted).
+
+**No code needed for this.** The scan route already returns the top 5 matches
+within distance 0.3, and the tiers sit 0.007–0.015 apart, so all three arrive in
+that list and `card-select-dialog.tsx` lets the user pick. Treat the tier as a
+confirmation step, not something the camera settles.
+
+Standard vs Hyperspace is the clearest split: Standard has the dark border frame,
+Hyperspace is full-bleed art to the card edge.
+
+One caveat: these embeddings come from the publisher's flat renders, where foil
+appears as painted-on starburst marks and the serialized card shows a `000 / 250`
+stamp. A real foil card under the scanner produces actual glare, and a real
+serialized card shows its own number, so live scans will not match these renders
+as cleanly as the renders match each other.

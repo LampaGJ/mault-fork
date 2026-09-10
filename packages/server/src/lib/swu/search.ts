@@ -4,6 +4,7 @@ import { fetchCardApi } from "../card-search/fetch";
 import type { CardSearchAdapter } from "../card-search/types";
 import { validateQuery } from "../card-search/validate";
 import { SwuCardListResponse, SwuCard } from "./api-types";
+import { swuImageUrl } from "./images";
 import { attachPrices } from "./prices";
 
 export const SWU_DEFAULT_URL = "https://admin.starwarsunlimited.com/api/card-list";
@@ -22,7 +23,7 @@ function normalizeSwuCard(raw: SwuCard): PlayingCard {
   const id = attrs.serialCode ?? "";
 
   // Get image URL from artFront
-  const imageUrl = attrs.artFront?.data?.attributes?.formats?.card?.url;
+  const imageUrl = swuImageUrl(attrs.artFront?.data?.attributes?.formats?.card?.url);
   const image = imageUrl ? { small: proxiedImageUrl(imageUrl), normal: proxiedImageUrl(imageUrl) } : null;
 
   // Normalize rarity to lowercase

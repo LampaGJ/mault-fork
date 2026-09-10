@@ -150,6 +150,7 @@ const ALLOWED_IMAGE_HOSTS = new Set([
   "www.gundam-gcg.com",
   "assets.tcgdex.net",
   "cdn.starwarsunlimited.com",
+  "starwarsunlimited.com",
 ]);
 
 router.get("/image-proxy", async (c) => {

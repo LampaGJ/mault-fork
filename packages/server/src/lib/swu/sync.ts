@@ -1,5 +1,6 @@
 import { CARD_API_HEADERS } from "../card-search/constants";
 import type { SyncSource, SyncSourceCard } from "../card-search/sync-types";
+import { swuImageUrl } from "./images";
 import { SWU_DEFAULT_URL } from "./search";
 import { SwuCardListResponse, type SwuCard } from "./api-types";
 
@@ -60,7 +61,7 @@ async function fetchCards(
     id: c.attributes?.serialCode ?? "",
     name: c.attributes?.title ?? "",
     setCode: c.attributes?.expansion?.data?.attributes?.code ?? c.attributes?.serialCode ?? "",
-    imageUrl: c.attributes?.artFront?.data?.attributes?.formats?.card?.url,
+    imageUrl: swuImageUrl(c.attributes?.artFront?.data?.attributes?.formats?.card?.url),
   }));
 }
 
@@ -85,7 +86,7 @@ async function fetchOne(id: string, baseUrl: string) {
   return {
     name: raw.attributes?.title ?? "",
     setCode: raw.attributes?.expansion?.data?.attributes?.code ?? raw.attributes?.serialCode ?? "",
-    imageUrl: raw.attributes?.artFront?.data?.attributes?.formats?.card?.url,
+    imageUrl: swuImageUrl(raw.attributes?.artFront?.data?.attributes?.formats?.card?.url),
   };
 }
 
