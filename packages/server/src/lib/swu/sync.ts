@@ -16,7 +16,10 @@ function extractRows(json: unknown) {
   return [];
 }
 
-const PAGE_SIZE = 100;
+// The API caps pageSize at 250 and silently returns 250 for anything larger,
+// so this is the largest page it will actually serve: 37 requests for the
+// catalogue instead of 92.
+const PAGE_SIZE = 250;
 
 function buildPageUrl(baseUrl: string, page: number): string {
   return `${baseUrl}?pagination[page]=${page}&pagination[pageSize]=${PAGE_SIZE}`;

@@ -89,8 +89,9 @@ four example bins including first-match-wins ordering.
 
 **Pricing** is now handled — see the Pricing section below.
 
-**Sync speed.** `fetchCards` pages sequentially at `PAGE_SIZE = 100`, so a full
-sync is ~92 serial requests — and the API caps `pageSize` at 250, so 37 would do.
+**Sync speed.** `fetchCards` now pages at 250, the largest the API will serve —
+37 requests for the catalogue instead of 92. Still sequential; parallelising the
+page fetches is the next lever if it matters.
 
 **The 33 MB `data/seed/swu-cards.csv.gz`** is in git history and is most of the
 repo's clone cost. If the sync path works, the seed is redundant.
@@ -149,8 +150,8 @@ at first because `attachPrices` swallows errors by design.
 
 ### Also found
 
-`pagination[pageSize]` caps at **250**, not 100. `fetchCards` uses 100, so a full
-sync is 92 requests where 37 would do.
+`pagination[pageSize]` caps at **250**, not 100 — anything larger silently
+returns 250. `fetchCards` now uses 250.
 
 ## Card images — the CDN blocks server-side fetches
 
