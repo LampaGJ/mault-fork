@@ -2,26 +2,23 @@ import { Hono } from "hono";
 import { authQuery } from "../../db";
 import { getDeviceByGuid } from "../../lib/devices";
 import { requireAuth, requireOrg, type AppEnv } from "../../middleware/auth";
-import { buildRoutes } from "./shared";
+import { toDevice } from "./shared";
 
-export const getBinRoutesRoute = new Hono<AppEnv>().get(
-  "/",
+export const getDeviceRoute = new Hono<AppEnv>().get(
+  "/:guid",
   requireAuth,
   requireOrg,
   async (c) => {
     const orgId = c.get("orgId");
-    const deviceGuid = c.req.param("guid") as string;
+    const guid = c.req.param("guid");
     try {
       const result = await authQuery(c.get("jwtClaims"), async (tx) => {
-        const device = await getDeviceByGuid(tx, orgId, deviceGuid);
+        const device = await getDeviceByGuid(tx, orgId, guid);
         if (!device) return { success: false, message: "Device not found." };
-        const rows = await tx.query.binRoutes.findMany({
-          where: (t, { eq }) => eq(t.deviceId, device.id),
-        });
         return {
           success: true,
-          message: "Loaded bin routes.",
-          data: buildRoutes(device.moduleCount, rows),
+          message: "Loaded device.",
+          data: toDevice(device),
         };
       });
       return c.json(result);
