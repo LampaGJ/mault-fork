@@ -1,18 +1,27 @@
 import {
-  CARD_CROP_REGIONS_BY_GAME_KEY,
   DISTANCE_THRESHOLD,
   OCR_REGIONS_BY_GAME_KEY,
+  type CardSearchEmbeddings,
 } from "@magic-vault/shared";
 import { Hono } from "hono";
 import { resolveGameKeyAndLang } from "../../lib/card-search/resolve";
 import { sendDiscordNotification } from "../../lib/discord";
 import { ocrRegions } from "../../lib/ocr";
-import { vectorizeCardImage } from "../../lib/vectorize";
 import { requireAuth, requireOrg, type AppEnv } from "../../middleware/auth";
 import { findCardMatches } from "./shared";
 
-export const searchByImageRoute = new Hono<AppEnv>().post(
-  "/",
+function parseEmbeddingField(value: unknown): number[] | null {
+  if (typeof value !== "string" || value.length === 0) return null;
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export const searchByVectorRoute = new Hono<AppEnv>().post(
+  "/by-vector",
   requireAuth,
   requireOrg,
   async (c) => {
@@ -35,6 +44,17 @@ export const searchByImageRoute = new Hono<AppEnv>().post(
       );
     }
 
+    const embedding = parseEmbeddingField(body["embedding"]);
+    if (!embedding) {
+      return c.json({ success: false, message: "No embedding provided." }, 400);
+    }
+    const embeddings: CardSearchEmbeddings = {
+      embedding,
+      embeddingArt: parseEmbeddingField(body["embeddingArt"]),
+      embeddingName: parseEmbeddingField(body["embeddingName"]),
+      embeddingBottom: parseEmbeddingField(body["embeddingBottom"]),
+    };
+
     const resolved = await resolveGameKeyAndLang(
       c.get("jwtClaims"),
       collectionGuid,
@@ -50,27 +70,13 @@ export const searchByImageRoute = new Hono<AppEnv>().post(
       matchThreshold != null ? 1 - matchThreshold / 100 : DISTANCE_THRESHOLD;
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const cropRegions = CARD_CROP_REGIONS_BY_GAME_KEY[gameKey];
-
-    let embeddings: Awaited<ReturnType<typeof vectorizeCardImage>>;
-    let ocrText: string;
-    try {
-      const [embeddingResult, ocrResult] = await Promise.all([
-        vectorizeCardImage(buffer, cropRegions),
-        ocrEnabled
-          ? ocrRegions(buffer, OCR_REGIONS_BY_GAME_KEY[gameKey] ?? []).catch(
-              () => "",
-            )
-          : Promise.resolve(""),
-      ]);
-      embeddings = embeddingResult;
-      ocrText = ocrResult;
-    } catch (err) {
-      console.error(err);
-      return c.json(
-        { success: false, message: "Failed to vectorize image." },
-        500,
-      );
+    let ocrText = "";
+    if (ocrEnabled) {
+      try {
+        ocrText = await ocrRegions(buffer, OCR_REGIONS_BY_GAME_KEY[gameKey] ?? []);
+      } catch (err) {
+        console.error(err);
+      }
     }
 
     try {
