@@ -2,10 +2,10 @@
 // bin sets, through the normal bins API (never a direct DB write). Also
 // pushes the current data/seed/swu-field-definitions.json onto the 'swu'
 // game via PUT /games/:guid so the presets' fields exist. Idempotent: a
-// preset whose name already exists in the org is left untouched.
+// preset whose name already exists in the org is left untouched, unless
+// SWU_PRESET_REPLACE=1, which deletes and recreates every preset.
 //
-// Every preset is built for a 6-bin sorter (3 modules x left/right) with
-// bin 6 as the catch-all. Rules evaluate first-match-wins in bin order
+// Presets are built for the 7-bin sorter: six rule bins, bin 7 the catch-all. Rules evaluate first-match-wins in bin order
 // (shared/evaluate-bin.ts), which the Aspect preset relies on.
 //
 // Boundaries: the seed JSON and every API response are parsed with Zod
@@ -30,7 +30,9 @@ const SERVER_URL = process.env.SERVER_URL ?? "http://localhost:3001";
 const EMAIL = process.env.BOOTSTRAP_ADMIN_EMAIL ?? "admin@mault.local";
 const PASSWORD = process.env.BOOTSTRAP_ADMIN_PASSWORD ?? "change-me-bootstrap-1";
 const ORG_NAME = process.env.SWU_PRESET_ORG ?? "Home";
-const BIN_COUNT = 6;
+const BIN_COUNT = 7;
+// A preset may override the bin count; the last bin is always the catch-all.
+const REPLACE = process.env.SWU_PRESET_REPLACE === "1";
 const CARD_LIMIT = 250;
 const FIELD_DEFS_PATH = join(__dirname, "..", "..", "..", "data", "seed", "swu-field-definitions.json");
 
@@ -68,57 +70,64 @@ const any = (...conditions: (BinCondition | BinRuleGroup)[]): BinRuleGroup => ({
 const empty = (): BinRuleGroup => ({ id: randomUUID(), combinator: "and", conditions: [] });
 const alpha = (...letters: string[]) => any(...letters.map((l) => cond("name", "starts_with", l)));
 
-// Bins 1..5 carry rules; bin 6 is the catch-all. Fewer than 5 rule bins
-// leaves the remaining bins empty (unused) rather than shifting numbers.
-const PRESETS: { name: string; bins: BinRuleGroup[] }[] = [
+// Bins 1..N-1 carry rules; bin N is the catch-all. Fewer rule bins than
+// that leaves the remaining bins empty (unused) rather than shifting numbers.
+const PRESETS: { name: string; bins: BinRuleGroup[]; binCount?: number }[] = [
   {
-    // Colour aspects first so a Heroism/Villainy + colour card lands on its
-    // colour; bin 5 then only sees mono-Heroism/Villainy cards; neutral
-    // (no aspect) falls through to the catch-all.
+    // 1 blue (Vigilance), 2 green (Command), 3 red (Aggression), 4 yellow
+    // (Cunning), 5 Heroism, 6 Villainy, 7 neutral/none. Colour bins come first
+    // so a Heroism/Villainy + colour card lands on its colour; bins 5-6 then
+    // only see mono-Heroism/Villainy cards; no-aspect cards reach the catch-all.
     name: "SWU · Aspect",
     bins: [
       all(cond("aspects", "contains_any", ["Vigilance"])),
       all(cond("aspects", "contains_any", ["Command"])),
       all(cond("aspects", "contains_any", ["Aggression"])),
       all(cond("aspects", "contains_any", ["Cunning"])),
-      all(cond("aspects", "contains_any", ["Heroism", "Villainy"])),
+      all(cond("aspects", "contains_any", ["Heroism"])),
+      all(cond("aspects", "contains_any", ["Villainy"])),
     ],
   },
   {
-    name: "SWU · Set A (SOR–LOF)",
+    name: "SWU · Set A (SOR–SEC)",
     bins: [
       all(cond("set_code", "equals", "SOR")),
       all(cond("set_code", "equals", "SHD")),
       all(cond("set_code", "equals", "TWI")),
       all(cond("set_code", "equals", "JTL")),
       all(cond("set_code", "equals", "LOF")),
+      all(cond("set_code", "equals", "SEC")),
     ],
   },
   {
-    name: "SWU · Set B (SEC–HMW)",
+    // Weekly Play, judge, convention and other promo codes reach the catch-all.
+    name: "SWU · Set B (LAW–HMW + promos)",
     bins: [
-      all(cond("set_code", "equals", "SEC")),
       all(cond("set_code", "equals", "LAW")),
       all(cond("set_code", "equals", "ASH")),
       all(cond("set_code", "equals", "HMW")),
-      all(cond("set_code", "in", ["SOR", "SHD", "TWI", "JTL", "LOF"])),
+      all(cond("set_code", "in", ["IBH", "TS26"])),
+      all(cond("set_code", "in", ["P25", "P26"])),
+      all(cond("set_code", "in", ["SOR", "SHD", "TWI", "JTL", "LOF", "SEC"])),
     ],
   },
   {
     name: "SWU · Alpha",
     bins: [
-      alpha("a", "b", "c", "d"),
-      alpha("e", "f", "g", "h"),
-      alpha("i", "j", "k", "l"),
-      alpha("m", "n", "o", "p"),
-      alpha("q", "r", "s", "t"),
+      alpha("a", "b", "c"),
+      alpha("d", "e", "f"),
+      alpha("g", "h", "i", "j"),
+      alpha("k", "l", "m"),
+      alpha("n", "o", "p", "q"),
+      alpha("r", "s"),
     ],
   },
   {
     // No-cost cards (leaders, bases, tokens) fall through to the catch-all.
     name: "SWU · Cost",
     bins: [
-      all(cond("cost", "lte", 2)),
+      all(cond("cost", "lte", 1)),
+      all(cond("cost", "equals", 2)),
       all(cond("cost", "equals", 3)),
       all(cond("cost", "equals", 4)),
       all(cond("cost", "equals", 5)),
@@ -126,7 +135,7 @@ const PRESETS: { name: string; bins: BinRuleGroup[] }[] = [
     ],
   },
   {
-    // Showcase, promos, and printings with no variant record fall through.
+    // Promos and printings with no variant record fall through.
     name: "SWU · Variant",
     bins: [
       all(cond("variant", "equals", "Standard")),
@@ -134,6 +143,7 @@ const PRESETS: { name: string; bins: BinRuleGroup[] }[] = [
       all(cond("variant", "equals", "Hyperspace")),
       all(cond("variant", "equals", "Hyperspace Foil")),
       all(cond("variant", "in", ["Standard Prestige", "Foil Prestige", "Serialized Prestige"])),
+      all(cond("variant", "equals", "Showcase")),
     ],
   },
   {
@@ -144,6 +154,7 @@ const PRESETS: { name: string; bins: BinRuleGroup[] }[] = [
       all(cond("type_name", "equals", "Upgrade")),
       all(cond("type_name", "equals", "Leader")),
       all(cond("type_name", "equals", "Base")),
+      all(cond("type_name", "in", ["Token Unit", "Token Upgrade", "Credit Token", "Force Token"])),
     ],
   },
   {
@@ -216,14 +227,19 @@ async function main() {
   let firstGuid: string | undefined;
   for (const preset of PRESETS) {
     if (existing.has(preset.name)) {
-      log(`Preset "${preset.name}" already exists, skipping.`);
-      firstGuid ??= existing.get(preset.name);
-      continue;
+      if (!REPLACE) {
+        log(`Preset "${preset.name}" already exists, skipping (SWU_PRESET_REPLACE=1 to recreate).`);
+        firstGuid ??= existing.get(preset.name);
+        continue;
+      }
+      await api(OkResponse, `/bins/${existing.get(preset.name)}`, { method: "DELETE", token, orgId: org.id });
+      log(`Deleted existing preset "${preset.name}".`);
     }
-    const initialBins: DefaultBinInit[] = Array.from({ length: BIN_COUNT }, (_, i) => ({
+    const binCount = preset.binCount ?? BIN_COUNT;
+    const initialBins: DefaultBinInit[] = Array.from({ length: binCount }, (_, i) => ({
       binNumber: i + 1,
       rules: preset.bins[i] ?? empty(),
-      isCatchAll: i === BIN_COUNT - 1,
+      isCatchAll: i === binCount - 1,
       cardLimit: CARD_LIMIT,
     }));
     const created = await api(BinSetsResponse, "/bins", {
