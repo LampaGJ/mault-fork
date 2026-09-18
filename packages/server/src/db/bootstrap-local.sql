@@ -40,11 +40,16 @@ GRANT USAGE ON SCHEMA public TO authenticated;
 
 DO $$
 DECLARE
-  read_only_tables text[] := ARRAY['cards', 'games'];
+  -- Keep both lists in step with every crudPolicy(...) table in schema.ts:
+  -- a table missing here fails every authQuery against it with 42501
+  -- (permission denied) in local mode - the whole Calibration page, for one,
+  -- went dark when `devices` arrived upstream without a grant.
+  read_only_tables text[] := ARRAY['cards', 'games', 'announcements'];
   read_write_tables text[] := ARRAY[
     'bin_sets', 'bins', 'bin_routes', 'module_configs', 'feeder_configs',
     'collections', 'collection_cards', 'org_settings',
-    'bin_set_audit', 'bin_route_audit', 'module_config_audit', 'feeder_config_audit'
+    'bin_set_audit', 'bin_route_audit', 'module_config_audit', 'feeder_config_audit',
+    'devices', 'unmatched_cards', 'org_billing'
   ];
   tbl text;
 BEGIN
