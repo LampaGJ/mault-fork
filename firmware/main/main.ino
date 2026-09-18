@@ -1,6 +1,61 @@
+// Classic AVR Uno (ATmega328P, 2 KB SRAM) is not an official build target,
+// but the sketch fits. What does not fit is ArduinoJson's default malloc
+// path: avr-libc reserves __malloc_margin (128 B) below the stack, and the
+// default 16-slot pools mean a 176-byte setConfig needs two pools at once,
+// so deserializeJson fails with NoMemory. Smaller pools + a fixed static
+// arena (see JsonArena below) parse every PROTOCOL.md command on this board.
+#if defined(ARDUINO_ARCH_AVR)
+#define ARDUINOJSON_POOL_CAPACITY 8
+#endif
 #include <ArduinoJson.h>
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
+
+#if defined(ARDUINO_ARCH_AVR)
+// Stack-style allocator over a static buffer; reset before each command.
+// ArduinoJson's StringBuilder grows each string with repeated reallocate()
+// calls and frees the node when it dedups, always on the most recent
+// allocation - so the top block is resized/released in place, and only a
+// (never observed) non-top reallocate falls back to copy-forward.
+struct JsonArena : ArduinoJson::Allocator {
+  // 432 = 320 + the 112 bytes the R3 build reclaims from core buffers
+  // (-DSERIAL_RX_BUFFER_SIZE=32 -DSERIAL_TX_BUFFER_SIZE=32
+  // -DTWI_BUFFER_LENGTH=16, see firmware/build-uno-r3.sh); a 10-field
+  // setConfig needs ~360 with copied keys, the rest is headroom.
+  static const size_t SIZE = 432;
+  uint8_t buf[SIZE];
+  size_t used = 0;
+  uint8_t* top = nullptr;
+  size_t want = 0;  // largest used+n ever requested; diagnostic for sizing SIZE
+  void reset() { used = 0; top = nullptr; }
+  void* allocate(size_t n) override {
+    if (used + n > want) want = used + n;
+    if (used + n > SIZE) return nullptr;
+    top = buf + used;
+    used += n;
+    return top;
+  }
+  void deallocate(void* p) override {
+    if (p && p == top) { used = top - buf; top = nullptr; }
+  }
+  void* reallocate(void* p, size_t n) override {
+    if (p && p == top) {
+      size_t base = top - buf;
+      if (base + n > want) want = base + n;
+      if (base + n > SIZE) return nullptr;
+      used = base + n;
+      return p;
+    }
+    void* q = allocate(n);
+    if (q && p) {
+      size_t avail = (buf + SIZE) - (uint8_t*)p;
+      memcpy(q, p, n < avail ? n : avail);
+    }
+    return q;
+  }
+};
+JsonArena jsonArena;
+#endif
 
 // S2/S3 boards must be built with "USB Mode: Hardware CDC and JTAG" and
 // "USB CDC On Boot: Enabled" (Arduino IDE Tools menu, or
@@ -594,7 +649,12 @@ void printJsonEscaped(const char* s, Print& reply) {
 }
 
 void handleCommand(char* json, Print& reply) {
+#if defined(ARDUINO_ARCH_AVR)
+  jsonArena.reset();
+  JsonDocument doc(&jsonArena);
+#else
   JsonDocument doc;
+#endif
   DeserializationError err = deserializeJson(doc, json);
   if (err) {
     reply.print(F("{\"error\":\"invalid JSON\",\"reason\":\""));
@@ -603,7 +663,13 @@ void handleCommand(char* json, Print& reply) {
     reply.print(strlen(json));
     reply.print(F(",\"received\":\""));
     printJsonEscaped(json, reply);
+#if defined(ARDUINO_ARCH_AVR)
+    reply.print(F("\",\"arenaWant\":"));
+    reply.print(jsonArena.want);
+    reply.println(F("}"));
+#else
     reply.println(F("\"}"));
+#endif
     return;
   }
 
@@ -614,7 +680,14 @@ void handleCommand(char* json, Print& reply) {
     reply.print(FIRMWARE_VERSION);
     reply.print(F("\",\"board\":\""));
     reply.print(BOARD_TYPE);
+#if defined(ARDUINO_ARCH_AVR)
+    // Peak JSON arena demand since boot - how JsonArena::SIZE was sized.
+    reply.print(F("\",\"arenaPeak\":"));
+    reply.print(jsonArena.want);
+    reply.println(F("}"));
+#else
     reply.println(F("\"}"));
+#endif
     return;
   }
 
