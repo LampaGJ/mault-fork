@@ -16,7 +16,8 @@
     "backfill:devices": "tsx --env-file ../../.env scripts/backfill-devices.ts",
     "backfill:missing-devices": "tsx --env-file ../../.env scripts/backfill-missing-devices.ts",
     "bootstrap:swu": "tsx --env-file ../../.env scripts/bootstrap-swu.ts",
-    "seed:swu-bins": "tsx --env-file ../../.env scripts/seed-swu-bin-sets.ts"
+    "seed:swu-bins": "tsx --env-file ../../.env scripts/seed-swu-bin-sets.ts",
+    "import:calibration": "tsx --env-file ../../.env scripts/import-calibration.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.9",
