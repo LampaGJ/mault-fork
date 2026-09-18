@@ -13,8 +13,7 @@
     "boardType": {
       "label": "Board",
       "unoR4": "Arduino",
-      "esp32": "ESP32-S3",
-      "esp32Wroom": "ESP32 (WROOM)"
+      "esp32": "ESP32-S3"
     }
   },
   "footer": {
@@ -59,9 +58,6 @@
           "esp32": {
             "notes": "Führt <code>{{path}}</code> aus; USB-Verbindung zum Host-Computer für Web Serial - kann später auch direkt aus der App aktualisiert werden, siehe /app nach der Einrichtung"
           },
-          "esp32Wroom": {
-            "notes": "Führt <code>{{path}}</code> aus; USB-Verbindung zum Host-Computer für Web Serial. Aktualisiere die Firmware dieses Boards nur über die Arduino-IDE - der in die App integrierte Browser-Flasher zielt speziell auf den ESP32-S3-Build ab und ist für dieses Board nicht sicher."
-          },
           "pca9685": {
             "part": "Adafruit PCA9685 16-Kanal-12-Bit-PWM-/Servotreiber",
             "notes": "I²C-Servotreiber – steuert alle 10 Servos an"
@@ -101,10 +97,6 @@
             "part": "USB-A-auf-USB-C-Kabel",
             "notes": "ESP32-S3-Board ↔ Host-Computer, über den nativen USB-Anschluss des Boards"
           },
-          "usbCableEsp32Wroom": {
-            "part": "USB-A-auf-USB-C- oder Micro-USB-Kabel (prüfe, welchen Anschluss dein Board hat)",
-            "notes": "ESP32-WROOM-32-Board ↔ Host-Computer, über seinen USB-Seriell-Brückenchip (CP2102/CH340, je nach Board) - der Anschluss selbst ist bei neueren Boards USB-C, bei älteren Micro-USB"
-          },
           "barrelJack": {
             "part": "DC-Hohlstecker oder Schraubklemmen-Anschlusskabel",
             "notes": "Passt den Netzteilausgang an die V+/GND-Klemme des PCA9685 an"
@@ -130,9 +122,17 @@
             "part": "O-Ring 9,2mm ID 14mm OD 2,4mm Schnurstärke",
             "notes": "Neuer Trichter – passt sich leichter an unterschiedliche Kartenstärken an als der klassische Trichter"
           },
-          "binHolders": {
-            "part": "3D-gedruckter Fachhalter",
-            "notes": "2 pro Modul ({{count}} Module) - einer links, einer rechts - fängt die vom Pusher ausgeworfenen Karten auf"
+          "servoControllerPlate": {
+            "part": "3D-gedruckte Servo-Controller-Platte",
+            "notes": "Wird unabhängig von der Modulanzahl nur einmal gedruckt"
+          },
+          "binsPlate": {
+            "part": "3D-gedruckte Bins-Platte",
+            "notes": "Fängt die vom Pusher auf jeder Seite ausgeworfenen Karten auf"
+          },
+          "endBinPlate": {
+            "part": "3D-gedruckte End-Bin-Platte",
+            "notes": "Wird zusammen mit den Bins-Platten verwendet, um die Fachbaugruppe zu vervollständigen"
           }
         }
       },
@@ -171,6 +171,10 @@
             "part": "M2×6-Schraube",
             "partSpec": "(11 pro Modul, +4 für die Platinenbefestigung, +3 für die Servotreiberplatine, +1 für den Zuführer)",
             "notes": "11 pro Modul ({{count}} Module): Klappen (Boden/Seiten) und Schieberarme; +4 zur Befestigung des {{board}}; +3 zur Befestigung der PCA9685-Servotreiberplatine; +1 für den Zuführer"
+          },
+          "m2x8Screw": {
+            "part": "M2×8-Schraube",
+            "notes": "2 pro Modul ({{count}} Module), zur Befestigung des Schiebers. M2×10 geht auch, falls keine M2×8 vorhanden ist."
           },
           "servoHornScrew": {
             "part": "Servohorn-Schraube (im Lieferumfang der Servos enthalten)",
@@ -272,6 +276,11 @@
     "optionalBadge": "Optional",
     "optionalClassicHopperBadge": "Optional, klassischer Trichter",
     "optionalNewHopperBadge": "Optional, neuer Trichter",
+    "esp32MountType": {
+      "label": "ESP32-Montage",
+      "breakout": "Mit Breakout-Platine",
+      "bare": "Ohne Breakout-Platine"
+    },
     "progress": {
       "stepsCount": "{{done}} von {{total}} Schritten"
     },
@@ -291,10 +300,16 @@
             "text": "Drucke 1 Sorting-Module-Shroud – es wird nur eine benötigt. Die Abdeckung, die über den gestapelten Modulen sitzt."
           },
           "printPlateBase": {
-            "text": "Für {{modules}} Sortiermodule drucke {{count}} Base-Support-Teile aus derselben Datei – die Module sind treppenförmig gestapelt, sodass jede zusätzliche Stufe ein Stützteil mehr benötigt als die Stufe darüber. Ändere die Modulanzahl in der Teileliste oben, um dies zu aktualisieren."
+            "text": "Für {{modules}} Sortiermodule drucke {{threeTall}} Base-Support-Teile mit 3 Stufen und {{oneTall}} Base-Support-Teile mit 1 Stufe aus derselben Datei – die Module sind treppenförmig gestapelt, sodass jede zusätzliche Stufe eine Höheneinheit mehr benötigt als die Stufe darüber. Kombiniere die beiden Teilhöhen, um jede Stufe aufzubauen. Ändere die Modulanzahl in der Teileliste oben, um dies zu aktualisieren.",
+            "breakoutNote": "Verwendest du den ESP32 mit einer Breakout-Platine? Drucke dann die Breakout-Variante dieses Base-Support-Teils statt der Standardversion. Der Platzbedarf der Breakout-Platine erfordert diesen zusätzlichen Freiraum."
           },
           "printPlateBaseBottom": {
-            "text": "Drucke 1 Controller-Platte."
+            "esp32OrArduino": "Drucke 1 Circuit-Board-Platte (ESP32 / Arduino). Diese Platte deckt jetzt sowohl die Arduino- als auch die ESP32-Montage ohne Breakout-Platine ab, in beiden Fällen dieselbe Platte.",
+            "esp32Breakout": "Drucke stattdessen 1 Circuit-Board-Platte (ESP32 + Breakout-Platine). Das ist eine eigene Platte, getrennt von der für Arduino/ESP32 ohne Breakout, nur nötig, wenn du den ESP32 mit einer Breakout-Platine verwendest.",
+            "esp32BreakoutNote": "Diese Platte benötigt außerdem eine Breakout-Basisstütze, die es in zwei Höhen gibt: drucke die 3-stufige Version, wenn deine Treppe 3 Module hoch ist, oder die 1-stufige Version für einen kürzeren Stapel. Drucke nur die zu deiner Modulanzahl passende, nicht beide."
+          },
+          "printServoControllerPlate": {
+            "text": "Drucke 1 Servo-Controller-Platte."
           },
           "printEndBottom": {
             "text": "Drucke 1 End-Platte."
@@ -302,8 +317,12 @@
           "printGenericBase": {
             "text": "Für {{modules}} Sortiermodule drucke {{count}} Generic-Platten. Ändere die Modulanzahl in der Teileliste oben, um dies zu aktualisieren."
           },
-          "printBinHolders": {
-            "text": "Für {{modules}} Sortiermodule drucke {{count}} Fachhalter – zwei pro Modul, einer für die linke und einer für die rechte Auswurfseite. Ändere die Modulanzahl in der Teileliste oben, um dies zu aktualisieren."
+          "printBinsPlate": {
+            "text": "Drucke 2 Bins-Platten.",
+            "risersNote": "Wenn du mehr als 3 Module verwendest, benötigst du eventuell die Behälter-Erhöhungen, damit die hinteren beiden Behälter hoch genug sitzen."
+          },
+          "printEndBinPlate": {
+            "text": "Drucke 1 End-Bin-Platte."
           },
           "dryFit": {
             "text": "Passe jedes Modulgehäuse trocken an, bevor du Elektronik einsetzt – schleife oder korrigiere jetzt enge Servoaussparungen."
@@ -334,11 +353,7 @@
           },
           "uploadSketchEsp32": {
             "text": "Wähle das Board „ESP32S3 Dev Module“, stelle unter Tools → USB Mode „Hardware CDC and JTAG“ und USB CDC On Boot „Enabled“ ein, wähle den richtigen Port und lade dann firmware/main/main.ino hoch.",
-            "note": "Verwendet das im Sketch bereits hinterlegte ESP32-S3-Pinlayout (siehe den IR_PINS-Kommentar in main.ino) - baust du stattdessen ein klassisches ESP32-WROOM-Board? Wähle oben diese Board-Option, ihr eigenes Pinlayout ist ebenfalls schon im Sketch hinterlegt. Hardware-CDC/JTAG-Modus mit aktiviertem CDC On Boot ist nötig, damit das Board überhaupt über seinen nativen USB-Port erreichbar ist, und ermöglicht es dem browserbasierten Flash-Tool in der App, das Board zuverlässig ohne Drücken der BOOT-Taste in den Bootloader-Modus zu versetzen; im Gegenzug meldet sich das Board unter einem generischen Espressif-Namen statt „Mault Card Sorter“."
-          },
-          "uploadSketchEsp32Wroom": {
-            "text": "Wähle das Board „ESP32 Dev Module“, wähle den richtigen Port und lade dann firmware/main/main.ino hoch.",
-            "note": "Verwendet das im Sketch bereits hinterlegte Pinlayout des klassischen ESP32 (siehe den IR_PINS-Kommentar in main.ino) - keine Neunummerierung nötig. Nutze für ein späteres Firmware-Update dieses Boards nicht das browserbasierte Flash-Tool in der App: Es lädt eine speziell für den ESP32-S3 gebaute Binärdatei herunter, die auf einem anderen ESP32-Chip nicht korrekt funktioniert. Lade stattdessen bei jeder Firmware-Änderung erneut über die Arduino-IDE hoch."
+            "note": "Verwendet das im Sketch bereits hinterlegte ESP32-S3-Pinlayout (siehe den IR_PINS-Kommentar in main.ino). Hardware-CDC/JTAG-Modus mit aktiviertem CDC On Boot ist nötig, damit das Board überhaupt über seinen nativen USB-Port erreichbar ist, und ermöglicht es dem browserbasierten Flash-Tool in der App, das Board zuverlässig ohne Drücken der BOOT-Taste in den Bootloader-Modus zu versetzen; im Gegenzug meldet sich das Board unter einem generischen Espressif-Namen statt „Mault Card Sorter“."
           },
           "confirmReady": {
             "text": "Öffne den seriellen Monitor mit 9600 Baud und bestätige, dass nach dem Neustart des Boards {\"status\":\"ready\"} angezeigt wird."
@@ -358,15 +373,15 @@
           },
           "mountBottomFlapper": {
             "text": "Baue die Bodenklappe zusammen, indem du die Klappe an das Gestänge schraubst und dann das Gestänge an das Horn. Denke daran, das Horn noch nicht auf den Servo zu montieren.",
-            "note": "Dies ist die Falltür, durch die eine Karte fällt, um das nächste Modul zu erreichen, oder das aktuelle bei einem Treffer. Das Horn wird erst auf den Servo gesetzt, sobald das Modul über die App kalibriert ist – siehe „Über die App kalibrieren“ weiter unten."
+            "note": "Die Markierungen OBEN/UNTEN am Gestänge geben die Einbaurichtung an, nicht die Ausrichtung des Moduls – da die Plattform beim Bauen auf dem Kopf steht, zeigt OBEN von der Plattform weg. Dies ist die Falltür, durch die eine Karte fällt, um das nächste Modul zu erreichen, oder das aktuelle bei einem Treffer. Das Horn wird erst auf den Servo gesetzt, sobald das Modul über die App kalibriert ist – siehe „Über die App kalibrieren“ weiter unten."
           },
           "mountSideFlappers": {
             "text": "Baue die seitlichen Klappen zusammen, indem du die linke und rechte Klappe an das gemeinsame Gestänge schraubst und dann das Gestänge an das Horn (ein Paar pro Modul). Denke daran, das Horn noch nicht auf den Servo zu montieren.",
-            "note": "Ein Paddelservo treibt beide Klappen gemeinsam an – sie öffnen und schließen als Paar, nicht unabhängig voneinander. Das Horn wird erst auf den Servo gesetzt, sobald das Modul über die App kalibriert ist – siehe „Über die App kalibrieren“ weiter unten."
+            "note": "Die Markierungen OBEN/UNTEN am Gestänge geben die Einbaurichtung an, nicht die Ausrichtung des Moduls – da die Plattform beim Bauen auf dem Kopf steht, zeigt OBEN von der Plattform weg. Ein Paddelservo treibt beide Klappen gemeinsam an – sie öffnen und schließen als Paar, nicht unabhängig voneinander. Das Horn wird erst auf den Servo gesetzt, sobald das Modul über die App kalibriert ist – siehe „Über die App kalibrieren“ weiter unten."
           },
           "mountPusherArm": {
-            "text": "Baue den Schieber zusammen, indem du den Schieberarm an das Gestänge schraubst und dann das Gestänge an das Horn. Denke daran, das Horn noch nicht auf den Servo zu montieren.",
-            "note": "Das Horn wird erst auf den Servo gesetzt, sobald das Modul über die App kalibriert ist – siehe „Über die App kalibrieren“ weiter unten."
+            "text": "Baue den Schieber zusammen, indem du den Schieberarm an das Gestänge schraubst und dann das Gestänge an das Horn. Schraube den zusammengebauten Schieber mit zwei M2×8-Schrauben am Modulgehäuse fest. Denke daran, das Horn noch nicht auf den Servo zu montieren.",
+            "note": "Die Markierungen OBEN/UNTEN am Gestänge geben die Einbaurichtung an, nicht die Ausrichtung des Moduls – da die Plattform beim Bauen auf dem Kopf steht, zeigt OBEN von der Plattform weg. Das Horn wird erst auf den Servo gesetzt, sobald das Modul über die App kalibriert ist – siehe „Über die App kalibrieren“ weiter unten."
           },
           "fitFeederOrings": {
             "text": "Ziehe 6 G20-O-Ringe auf die Zuführrolle auf.",
@@ -387,11 +402,11 @@
             "note": "Wie bei der Zuführrolle geben diese ihr Griffigkeit auf der Kartenoberfläche."
           },
           "mountHopperRoller": {
-            "text": "Montiere die Trichterrolle mit 2 M3×8-Schrauben und 2 M3-Unterlegscheiben am Trichter."
+            "text": "Montiere die Trichterrolle mit 2 M3×8-Schrauben und 2 M3-Unterlegscheiben am Trichter.",
+            "note": "Die Rolle sollte nach der Montage stramm sitzen — sie darf nicht frei durchdrehen."
           },
           "calibrateHopperRoller": {
-            "text": "Setze die Feder und die M3×25-Schraube ein und nutze die Schraube, um die Wand so einzustellen, dass jeweils nur 1 Karte durchpasst.",
-            "note": "Ziehe die Rolle an, bis sie nicht mehr frei durchdreht, sich aber noch von Hand drehen lässt."
+            "text": "Setze die Feder und die M3×25-Schraube ein und ziehe die Schraube an, bis sie unten am Montagepunkt herausragt. Löse sie dann langsam, bis der Trichter jeweils nur 1 Karte zuführt."
           },
           "mountModuleIr": {
             "text": "Befestige an jedem Modul (1-{{modules}}) einen IR-Sensor am Tor mit je 1 M2×6-Schraube, ausgerichtet quer zum Kartenweg."

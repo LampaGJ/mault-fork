@@ -13,8 +13,7 @@
     "boardType": {
       "label": "Carte",
       "unoR4": "Arduino",
-      "esp32": "ESP32-S3",
-      "esp32Wroom": "ESP32 (WROOM)"
+      "esp32": "ESP32-S3"
     }
   },
   "footer": {
@@ -59,9 +58,6 @@
           "esp32": {
             "notes": "Exécute <code>{{path}}</code> ; connexion USB à l'ordinateur hôte pour le Web Serial - peut aussi être mis à jour directement depuis l'app ensuite, voir /app une fois configuré"
           },
-          "esp32Wroom": {
-            "notes": "Exécute <code>{{path}}</code> ; connexion USB à l'ordinateur hôte pour le Web Serial. Mets à jour son firmware uniquement via l'IDE Arduino - le flasheur intégré à l'app cible spécifiquement l'ESP32-S3 et n'est pas sûr à utiliser sur cette carte."
-          },
           "pca9685": {
             "part": "Adafruit PCA9685, driver PWM/servo 16 canaux 12 bits",
             "notes": "Driver de servo I²C - pilote les 10 servos"
@@ -101,10 +97,6 @@
             "part": "Câble USB-A vers USB-C",
             "notes": "Carte ESP32-S3 ↔ ordinateur hôte, via le port USB natif de la carte"
           },
-          "usbCableEsp32Wroom": {
-            "part": "Câble USB-A vers USB-C ou Micro-USB (vérifie le port de ta carte)",
-            "notes": "Carte ESP32-WROOM-32 ↔ ordinateur hôte, via sa puce pont USB-série (CP2102/CH340, selon la carte) - le connecteur lui-même est en USB-C sur les cartes récentes, en Micro-USB sur les plus anciennes"
-          },
           "barrelJack": {
             "part": "Prise jack CC ou pigtail à bornier à vis",
             "notes": "Adapte la sortie de l'alimentation à la borne V+ / GND du PCA9685"
@@ -130,9 +122,17 @@
             "part": "Joint torique 9,2mm DI 14mm DE section 2,4mm",
             "notes": "Nouvelle trémie - s'adapte plus facilement à différentes épaisseurs de cartes que la trémie classique"
           },
-          "binHolders": {
-            "part": "Bac imprimé en 3D",
-            "notes": "2 par module ({{count}} modules) - un à gauche, un à droite - reçoit les cartes éjectées par le poussoir"
+          "servoControllerPlate": {
+            "part": "Plaque Servo Controller imprimée en 3D",
+            "notes": "Imprimée une seule fois, quel que soit le nombre de modules"
+          },
+          "binsPlate": {
+            "part": "Plaque Bins imprimée en 3D",
+            "notes": "Reçoit les cartes éjectées de chaque côté par le poussoir"
+          },
+          "endBinPlate": {
+            "part": "Plaque End Bin imprimée en 3D",
+            "notes": "Utilisée avec les plaques Bins pour compléter l'assemblage des bacs"
           }
         }
       },
@@ -171,6 +171,10 @@
             "part": "Vis M2×6",
             "partSpec": "(11 par module, +4 pour la fixation de la carte, +3 pour la carte driver de servo, +1 pour le chargeur)",
             "notes": "11 par module ({{count}} modules) : trappe (bas/côtés) et bras du poussoir ; +4 pour fixer le {{board}} ; +3 pour fixer la carte driver de servo PCA9685 ; +1 pour le chargeur"
+          },
+          "m2x8Screw": {
+            "part": "Vis M2×8",
+            "notes": "2 par module ({{count}} modules), pour fixer le poussoir. Une vis M2×10 convient aussi si tu n'as pas de M2×8."
           },
           "servoHornScrew": {
             "part": "Vis de palonnier de servo (incluse avec les servos)",
@@ -272,6 +276,11 @@
     "optionalBadge": "Optionnel",
     "optionalClassicHopperBadge": "Optionnel, trémie classique",
     "optionalNewHopperBadge": "Optionnel, nouvelle trémie",
+    "esp32MountType": {
+      "label": "Montage ESP32",
+      "breakout": "Avec carte de breakout",
+      "bare": "Sans carte de breakout"
+    },
     "progress": {
       "stepsCount": "{{done}} sur {{total}} étapes"
     },
@@ -291,10 +300,16 @@
             "text": "Imprime 1 Sorting Module Shroud - une seule suffit. Le capot qui recouvre les modules empilés."
           },
           "printPlateBase": {
-            "text": "Pour {{modules}} modules de tri, imprime {{count}} pièces Base Support à partir du même fichier - les modules s'empilent en escalier, donc chaque niveau ajouté nécessite une pièce de support de plus que le niveau au-dessus. Change le nombre de modules dans la liste des pièces ci-dessus pour mettre ce nombre à jour."
+            "text": "Pour {{modules}} modules de tri, imprime {{threeTall}} pièces Base Support 3 niveaux et {{oneTall}} pièces Base Support 1 niveau à partir du même fichier - les modules s'empilent en escalier, donc chaque niveau ajouté nécessite une unité de hauteur de plus que le niveau au-dessus. Combine les deux hauteurs de pièces pour construire chaque niveau. Change le nombre de modules dans la liste des pièces ci-dessus pour mettre ce nombre à jour.",
+            "breakoutNote": "Tu utilises l'ESP32 avec une carte de breakout ? Imprime la variante breakout de cette pièce Base Support au lieu de la version standard. L'encombrement de la carte de breakout nécessite ce dégagement supplémentaire."
           },
           "printPlateBaseBottom": {
-            "text": "Imprime 1 plaque Controller."
+            "esp32OrArduino": "Imprime 1 plaque Circuit Board (ESP32 / Arduino). Cette plaque couvre maintenant à la fois l'Arduino et l'ESP32 sans carte de breakout, la même plaque dans les deux cas.",
+            "esp32Breakout": "Imprime plutôt 1 plaque Circuit Board (ESP32 + carte de breakout). C'est une plaque distincte de celle pour Arduino/ESP32 sans breakout, nécessaire seulement si tu utilises l'ESP32 avec une carte de breakout.",
+            "esp32BreakoutNote": "Cette plaque nécessite aussi un support de base pour breakout, disponible en deux hauteurs : imprime la version 3 niveaux si ton escalier compte 3 modules, ou la version 1 niveau pour un empilement plus court. N'imprime que celle qui correspond à ton nombre de modules, pas les deux."
+          },
+          "printServoControllerPlate": {
+            "text": "Imprime 1 plaque Servo Controller."
           },
           "printEndBottom": {
             "text": "Imprime 1 plaque End."
@@ -302,8 +317,12 @@
           "printGenericBase": {
             "text": "Pour {{modules}} modules de tri, imprime {{count}} plaques Generic. Change le nombre de modules dans la liste des pièces ci-dessus pour mettre ce nombre à jour."
           },
-          "printBinHolders": {
-            "text": "Pour {{modules}} modules de tri, imprime {{count}} bacs - deux par module, un pour le côté d'éjection gauche et un pour le droit. Change le nombre de modules dans la liste des pièces ci-dessus pour mettre ce nombre à jour."
+          "printBinsPlate": {
+            "text": "Imprime 2 plaques Bins.",
+            "risersNote": "Si tu utilises plus de 3 modules, tu auras peut-être besoin des rehausseurs de bacs pour que les deux bacs arrière soient assez hauts."
+          },
+          "printEndBinPlate": {
+            "text": "Imprime 1 plaque End Bin."
           },
           "dryFit": {
             "text": "Fais un essai à sec de chaque logement de module avant d'insérer l'électronique - ponce ou ajuste dès maintenant les logements de servo trop serrés."
@@ -334,11 +353,7 @@
           },
           "uploadSketchEsp32": {
             "text": "Sélectionne la carte « ESP32S3 Dev Module », règle Tools → USB Mode sur « Hardware CDC and JTAG » et USB CDC On Boot sur « Enabled », sélectionne le bon port, puis téléverse firmware/main/main.ino.",
-            "note": "Utilise la disposition de broches ESP32-S3 déjà présente dans le sketch (voir le commentaire IR_PINS dans main.ino) - tu montes plutôt une carte ESP32 WROOM classique ? Choisis cette option de carte ci-dessus, sa propre disposition de broches est déjà prévue dans le sketch aussi. Le mode Hardware CDC/JTAG avec CDC On Boot activé est nécessaire pour que la carte soit accessible via son port USB natif, et permet à l'outil de flashage intégré à l'application de remettre la carte en mode bootloader de façon fiable, sans appuyer sur le bouton BOOT ; en contrepartie, la carte s'annonce sous un nom Espressif générique plutôt que « Mault Card Sorter »."
-          },
-          "uploadSketchEsp32Wroom": {
-            "text": "Sélectionne la carte « ESP32 Dev Module », sélectionne le bon port, puis téléverse firmware/main/main.ino.",
-            "note": "Utilise la disposition de broches de l'ESP32 classique déjà présente dans le sketch (voir le commentaire IR_PINS dans main.ino) - aucune renumérotation nécessaire. N'utilise pas l'outil de flashage intégré à l'application pour mettre à jour cette carte : il télécharge un binaire compilé spécifiquement pour l'ESP32-S3, qui ne fonctionnera pas correctement sur une autre puce ESP32. Retéléverse plutôt depuis l'IDE Arduino à chaque changement de firmware."
+            "note": "Utilise la disposition de broches ESP32-S3 déjà présente dans le sketch (voir le commentaire IR_PINS dans main.ino). Le mode Hardware CDC/JTAG avec CDC On Boot activé est nécessaire pour que la carte soit accessible via son port USB natif, et permet à l'outil de flashage intégré à l'application de remettre la carte en mode bootloader de façon fiable, sans appuyer sur le bouton BOOT ; en contrepartie, la carte s'annonce sous un nom Espressif générique plutôt que « Mault Card Sorter »."
           },
           "confirmReady": {
             "text": "Ouvre le moniteur série à 9600 bauds et confirme que tu vois {\"status\":\"ready\"} après la réinitialisation de la carte."
@@ -358,15 +373,15 @@
           },
           "mountBottomFlapper": {
             "text": "Assemble la trappe inférieure en vissant la trappe à la liaison, puis la liaison au palonnier. N'oublie pas de ne pas encore installer le palonnier sur le servo.",
-            "note": "C'est la trappe par laquelle une carte tombe pour atteindre le module suivant, ou le module actuel en cas de correspondance. Le palonnier n'est fixé sur le servo qu'une fois le module calibré depuis l'application - voir « Calibrer depuis l'application » plus bas."
+            "note": "Les repères HAUT/BAS de la liaison indiquent son sens de montage, pas l'orientation du module : la plateforme étant montée à l'envers, HAUT est à l'opposé de la plateforme. C'est la trappe par laquelle une carte tombe pour atteindre le module suivant, ou le module actuel en cas de correspondance. Le palonnier n'est fixé sur le servo qu'une fois le module calibré depuis l'application - voir « Calibrer depuis l'application » plus bas."
           },
           "mountSideFlappers": {
             "text": "Assemble les trappes latérales en vissant la trappe gauche et la trappe droite à la liaison commune, puis la liaison au palonnier (une paire par module). N'oublie pas de ne pas encore installer le palonnier sur le servo.",
-            "note": "Un seul servo de palette entraîne les deux trappes ensemble - elles s'ouvrent et se ferment en paire, pas indépendamment. Le palonnier n'est fixé sur le servo qu'une fois le module calibré depuis l'application - voir « Calibrer depuis l'application » plus bas."
+            "note": "Les repères HAUT/BAS de la liaison indiquent son sens de montage, pas l'orientation du module : la plateforme étant montée à l'envers, HAUT est à l'opposé de la plateforme. Un seul servo de palette entraîne les deux trappes ensemble - elles s'ouvrent et se ferment en paire, pas indépendamment. Le palonnier n'est fixé sur le servo qu'une fois le module calibré depuis l'application - voir « Calibrer depuis l'application » plus bas."
           },
           "mountPusherArm": {
-            "text": "Assemble le poussoir en vissant le bras poussoir à la liaison, puis la liaison au palonnier. N'oublie pas de ne pas encore installer le palonnier sur le servo.",
-            "note": "Le palonnier n'est fixé sur le servo qu'une fois le module calibré depuis l'application - voir « Calibrer depuis l'application » plus bas."
+            "text": "Assemble le poussoir en vissant le bras poussoir à la liaison, puis la liaison au palonnier. Fixe le poussoir assemblé au boîtier du module avec deux vis M2×8. N'oublie pas de ne pas encore installer le palonnier sur le servo.",
+            "note": "Les repères HAUT/BAS de la liaison indiquent son sens de montage, pas l'orientation du module : la plateforme étant montée à l'envers, HAUT est à l'opposé de la plateforme. Le palonnier n'est fixé sur le servo qu'une fois le module calibré depuis l'application - voir « Calibrer depuis l'application » plus bas."
           },
           "fitFeederOrings": {
             "text": "Monte 6 joints toriques G20 sur le rouleau du chargeur.",
@@ -387,11 +402,11 @@
             "note": "Comme pour le rouleau du chargeur, ils lui donnent de l'adhérence sur la carte."
           },
           "mountHopperRoller": {
-            "text": "Installe le rouleau de la trémie sur la trémie avec 2 vis M3×8 et 2 rondelles M3."
+            "text": "Installe le rouleau de la trémie sur la trémie avec 2 vis M3×8 et 2 rondelles M3.",
+            "note": "Le rouleau doit être rigide une fois monté — il ne doit pas tourner librement."
           },
           "calibrateHopperRoller": {
-            "text": "Monte le ressort et la vis M3×25, puis utilise la vis pour régler la paroi afin qu'elle ne laisse passer qu'une seule carte à la fois.",
-            "note": "Serre le rouleau jusqu'à ce qu'il ne tourne plus librement, tout en pouvant encore être tourné à la main."
+            "text": "Monte le ressort et la vis M3×25, puis serre la vis jusqu'à ce qu'elle dépasse par le bas du point de montage. Desserre-la ensuite lentement jusqu'à ce que la trémie ne laisse passer qu'une seule carte à la fois."
           },
           "mountModuleIr": {
             "text": "Fixe un capteur IR à la porte de chaque module (1 à {{modules}}) avec 1 vis M2×6 chacun, pointé à travers le trajet de la carte."

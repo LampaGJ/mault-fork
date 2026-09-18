@@ -12,7 +12,12 @@
   "serial": {
     "connectionFailed": {
       "title": "Échec de la connexion",
-      "description": "Impossible d'ouvrir le port. Vérifie qu'aucune autre application ne l'utilise."
+      "description": "Impossible de se connecter. Vérifie qu'aucune autre application n'utilise l'appareil."
+    },
+    "bluetoothPermissionBlocked": "L'autorisation Bluetooth est bloquée pour ce navigateur. Vérifie les paramètres du site dans ton navigateur (ou chrome://settings/content/bluetoothDevices) pour autoriser le Bluetooth, puis réessaie.",
+    "connectionLost": {
+      "title": "Connexion perdue",
+      "description": "Le trieur s'est déconnecté de manière inattendue. Si tu es connecté via USB, vérifie qu'aucune autre application (comme le moniteur série de l'IDE Arduino) n'utilise le port, puis reconnecte-toi."
     },
     "testingDevice": "Test de l'appareil…",
     "deviceReady": "Appareil prêt",
@@ -20,6 +25,10 @@
       "title": "Échec du test de l'appareil",
       "description": "Connecté, mais aucune réponse reçue. Essaie de te reconnecter."
     },
+    "copyCommunication": "Copier la communication",
+    "commLogCopied": "Journal de communication copié dans le presse-papiers",
+    "commLogCopyFailed": "Échec de la copie du journal de communication",
+    "commLogEmpty": "Aucune communication enregistrée pour le moment",
     "firmwareOutdatedBanner": "Ta trieuse utilise le firmware v{{version}}, plus ancien que la dernière version v{{latest}}. Réimporte firmware/main/main.ino pour la mettre à jour.",
     "firmwareVersionMissingBanner": "Le firmware de ta trieuse ne signale aucune version et ne peut pas être utilisé pour scanner. Réimporte la dernière version de firmware/main/main.ino pour activer le scan.",
     "update": {
@@ -92,6 +101,10 @@
       "description": "Carte bloquée au module {{module}}. Vérifie la trieuse et reprends.",
       "descriptionWithBin": "Carte bloquée au module {{module}} (en direction du bac {{bin}}). Vérifie la trieuse et reprends."
     },
+    "noCardDetected": {
+      "title": "Aucune carte détectée",
+      "description": "Le capteur du module 1 ne détecte aucune carte - insère-en une avant de scanner."
+    },
     "feedFailed": {
       "title": "Échec de l'alimentation",
       "description": "Impossible d'envoyer la commande au chargeur."
@@ -162,6 +175,7 @@
     "heading": "Débogage",
     "simulateScan": "Simuler un scan",
     "simulateMultiMatch": "Simuler des correspondances multiples",
+    "simulateNoMatch": "Simuler une carte non reconnue",
     "forceError": "Forcer une erreur"
   },
   "scannerMenu": {
@@ -171,13 +185,22 @@
     "zoom": "Zoom",
     "disconnect": "Déconnecter",
     "connect": "Connecter",
+    "connectUsb": "Connecter via USB",
+    "connectBluetooth": "Connecter via Bluetooth",
     "scanner": "Scanner",
     "autoFeed": "Alimentation auto",
     "allowDuplicates": "Autoriser les doublons",
     "calibrate": "Calibrer",
     "retryConnection": "Réessayer la connexion",
     "usePhoneAsCamera": "Utiliser le téléphone comme caméra",
-    "phoneCameraConnected": "Caméra du téléphone connectée"
+    "phoneCameraConnected": "Caméra du téléphone connectée",
+    "ocrTextMatching": "Correspondance de texte OCR"
+  },
+  "ocrBetaDialog": {
+    "title": "Correspondance de texte OCR (bêta)",
+    "description": "Cette fonctionnalité lit le code d'extension et le numéro de collection sur l'image de la carte scannée afin d'aider à identifier la bonne édition. Elle est encore en bêta et peut occasionnellement capter du texte superflu sur la carte ou le mal interpréter. Désactivez-la si elle semble dégrader les résultats.",
+    "confirm": "Activer l'OCR",
+    "cancel": "Annuler"
   },
   "phoneCamera": {
     "dialogTitle": "Utiliser le téléphone comme caméra",
@@ -203,6 +226,7 @@
   "scannerOverlay": {
     "apiDown": "{{api}} est actuellement hors service - le scan est désactivé pour cette collection jusqu'à son rétablissement. Consulte la page de statut pour les mises à jour.",
     "dailyLimitReached": "Limite de scans quotidienne atteinte. Passe à Entreprise pour un scan illimité.",
+    "upgradeButton": "Mettre à niveau",
     "connectCamera": "Connecte une caméra pour commencer à scanner.",
     "waitingForPhone": "En attente d'un téléphone à associer comme caméra - affiche le code QR depuis le menu caméra.",
     "phoneReadyNoPhoto": "Caméra du téléphone prête. Elle prendra une photo dès qu'une carte arrivera.",
@@ -222,6 +246,12 @@
   },
   "sessionErrorsPanel": {
     "heading": "Erreurs"
+  },
+  "unmatchedCardsPanel": {
+    "heading_one": "{{count}} carte non reconnue",
+    "heading_other": "{{count}} cartes non reconnues",
+    "imageAlt": "Carte non reconnue",
+    "noImage": "Aucune image capturée"
   },
   "sessionStatsPanel": {
     "totalCards": "Total des cartes",
@@ -255,6 +285,9 @@
     "sessionReleased": "Session libérée",
     "releaseFailed": "Échec de la libération de la session",
     "leaveSession": "Quitter la session",
+    "searchPlaceholder": "Rechercher des sessions...",
+    "noSearchResultsTitle": "Aucune session correspondante",
+    "noSearchResultsDescription": "Essayez un autre terme de recherche",
     "title": "Surveillance de session",
     "subtitle": "Rejoindre une session de scan en direct",
     "noSessionsFound": "Aucune session trouvée",
@@ -262,5 +295,10 @@
     "cardCount_one": "{{count}} carte",
     "cardCount_other": "{{count}} cartes",
     "isScanningTooltip": "{{name}} est en train de scanner"
+  },
+  "binLimitDialog": {
+    "title": "Le bac {{number}} est plein",
+    "description": "Le bac {{number}} a atteint sa limite de {{limit}} cartes. Retirez les cartes du bac, puis continuez le scan.",
+    "continueButton": "J'ai vidé le bac, continuer"
   }
 }

@@ -4,14 +4,16 @@ import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { DynamicDialog } from "@/components/ui/responsive-dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
+import { InputGroupAddon } from "@/components/ui/input-group";
+import { DynamicDialog } from "@/components/ui/responsive-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
@@ -20,12 +22,14 @@ import {
 } from "@/components/ui/tooltip";
 import {
   binsQueryOptions,
+  checkSetName,
   getBinSetHistory,
   revertBinSet,
   type BinSetAuditEntry,
 } from "@/features/bins/api/sort-bins";
 import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
-import type { PresetSelectorProps } from "@/features/bins/types";
+import { AutoAssignSnapshot } from "@/features/bins/components/auto-assign-snapshot";
+import type { PresetSelectorProps } from "@/lib/interfaces/bins";
 import { useCollections } from "@/features/collections/api/use-collections";
 import { useOrg } from "@/features/companies/api/use-organization";
 import {
@@ -39,10 +43,11 @@ import {
   IconEdit,
   IconLoader2,
   IconPlus,
+  IconRefresh,
   IconTrash,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
@@ -67,6 +72,7 @@ function BinSnapshotSummary({ snapshot }: { snapshot: BinConfig[] }) {
               {t("presetSelector.binLabel", { number: bin.binNumber })}
             </span>
             <span>
+              {!bin.isCatchAll && bin.isOverride && `${t("binCard.override")} · `}
               {bin.isCatchAll
                 ? t("presetSelector.catchAll")
                 : count === 0
@@ -91,6 +97,7 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
     selectedSet,
     isActivating,
     isPresetMutating,
+    resetAutoAssign,
   } = useBinConfigs();
   const { activeCollection } = useCollections();
   const { activeOrg } = useOrg();
@@ -100,6 +107,8 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [resetAutoAssignDialogOpen, setResetAutoAssignDialogOpen] =
+    useState(false);
 
   const { data: historyResult, isLoading: historyLoading } = useQuery({
     queryKey: ["bins", "history", selectedSet?.guid],
@@ -142,6 +151,63 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
     defaultValues: { name: selectedSet?.name ?? "" },
     mode: "onChange",
   });
+
+  const activeGameGuid = activeCollection?.game?.guid;
+
+  const createNameValue = createForm.watch("name");
+  const { data: createNameCheck } = useQuery({
+    queryKey: ["bins", "check-name", createNameValue, activeGameGuid],
+    queryFn: () => checkSetName(createNameValue, activeGameGuid),
+    enabled: createDialogOpen && !!createNameValue?.trim(),
+    staleTime: 0,
+  });
+
+  useEffect(() => {
+    if (!createDialogOpen || !createNameValue?.trim()) return;
+    if (
+      createNameCheck?.success &&
+      createNameCheck.data &&
+      !createNameCheck.data.available
+    ) {
+      createForm.setError("name", {
+        type: "taken",
+        message: t("presetSelector.duplicateName"),
+      });
+    } else {
+      createForm.clearErrors("name");
+    }
+  }, [createDialogOpen, createNameValue, createNameCheck, createForm, t]);
+
+  const renameNameValue = renameForm.watch("name");
+  const { data: renameNameCheck } = useQuery({
+    queryKey: [
+      "bins",
+      "check-name",
+      renameNameValue,
+      activeGameGuid,
+      selectedSet?.guid,
+    ],
+    queryFn: () =>
+      checkSetName(renameNameValue, activeGameGuid, selectedSet?.guid),
+    enabled: renameDialogOpen && !!renameNameValue?.trim(),
+    staleTime: 0,
+  });
+
+  useEffect(() => {
+    if (!renameDialogOpen || !renameNameValue?.trim()) return;
+    if (
+      renameNameCheck?.success &&
+      renameNameCheck.data &&
+      !renameNameCheck.data.available
+    ) {
+      renameForm.setError("name", {
+        type: "taken",
+        message: t("presetSelector.duplicateName"),
+      });
+    } else {
+      renameForm.clearErrors("name");
+    }
+  }, [renameDialogOpen, renameNameValue, renameNameCheck, renameForm, t]);
 
   const handleCreate = useCallback(
     async (values: CreateSetFormValues) => {
@@ -204,32 +270,35 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
     <Field>
       <FieldLabel>{t("presetSelector.sortingLogic")}</FieldLabel>
       <ButtonGroup className="w-full">
-        <Select
-          key={selectedSet?.guid ?? ""}
-          value={selectedSet?.guid ?? ""}
-          onValueChange={(guid) => activateSet(guid!)}
+        <Combobox
+          items={sets}
+          value={selectedSet ?? null}
+          onValueChange={(set) => set && activateSet(set.guid)}
+          itemToStringLabel={(set: BinSet) => set.name}
+          isItemEqualToValue={(a: BinSet, b: BinSet) => a?.guid === b?.guid}
         >
-          <SelectTrigger
+          <ComboboxInput
             className="flex-1 overflow-hidden"
+            placeholder={t("presetSelector.selectSetPlaceholder")}
             disabled={isActivating}
           >
-            <SelectValue placeholder={t("presetSelector.selectSetPlaceholder")}>
-              <span className="flex items-center gap-1.5 min-w-0">
-                {isActivating && (
-                  <IconLoader2 className="size-3 animate-spin shrink-0 text-muted-foreground" />
-                )}
-                <span className="truncate">{selectedSet?.name}</span>
-              </span>
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {sets.map((set) => (
-              <SelectItem key={set.guid} value={set.guid}>
-                <span className="truncate">{set.name}</span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+            {isActivating && (
+              <InputGroupAddon align="inline-start">
+                <IconLoader2 className="size-3 animate-spin text-muted-foreground" />
+              </InputGroupAddon>
+            )}
+          </ComboboxInput>
+          <ComboboxContent>
+            <ComboboxEmpty>{t("presetSelector.noMatchingSets")}</ComboboxEmpty>
+            <ComboboxList>
+              {(set: BinSet) => (
+                <ComboboxItem key={set.guid} value={set}>
+                  <span className="truncate">{set.name}</span>
+                </ComboboxItem>
+              )}
+            </ComboboxList>
+          </ComboboxContent>
+        </Combobox>
         {readOnly ? (
           <>
             <Tooltip>
@@ -253,6 +322,35 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
                 {t("presetSelector.editSortingLogic")}
               </TooltipContent>
             </Tooltip>
+            {!!selectedSet?.autoAssignField && (
+              <>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        disabled={!selectedSet || isPresetMutating}
+                        onClick={() => setResetAutoAssignDialogOpen(true)}
+                      >
+                        <IconRefresh />
+                      </Button>
+                    }
+                  ></TooltipTrigger>
+                  <TooltipContent>{t("autoAssignPanel.reset")}</TooltipContent>
+                </Tooltip>
+                <DeleteDialog
+                  open={resetAutoAssignDialogOpen}
+                  onOpenChange={setResetAutoAssignDialogOpen}
+                  title={t("autoAssignPanel.resetConfirmTitle")}
+                  description={t("autoAssignPanel.resetConfirmDescription")}
+                  confirmLabel={t("autoAssignPanel.reset")}
+                  onConfirm={resetAutoAssign}
+                >
+                  <AutoAssignSnapshot />
+                </DeleteDialog>
+              </>
+            )}
           </>
         ) : (
           <>
@@ -344,6 +442,7 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
                   variant="outline"
                   size="icon"
                   disabled={isPresetMutating}
+                  data-tour="create-sorting-rule"
                 >
                   <IconPlus />
                 </Button>

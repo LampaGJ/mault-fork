@@ -56,6 +56,15 @@ export interface BinConfig {
   binNumber: number;
   rules: BinRuleGroup;
   isCatchAll?: boolean;
+  isOverride?: boolean;
+  cardLimit?: number | null;
+  lastEmptiedAt?: number | null;
+}
+
+export interface RepackSlot {
+  id: string;
+  rule: BinRuleGroup;
+  targetCount: number;
 }
 
 export interface BinSet {
@@ -64,6 +73,11 @@ export interface BinSet {
   isActive: boolean;
   bins: BinConfig[];
   game: Game | null;
+  autoAssignField: string | null;
+  scanOnly: boolean;
+  isRepackMode: boolean;
+  repackSlots: RepackSlot[];
+  repackAllowDuplicates: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

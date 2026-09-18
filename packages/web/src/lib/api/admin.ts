@@ -1,5 +1,10 @@
-import { API_BASE, apiDelete, apiGet, apiPost } from "@/lib/api/client";
-import { getAuthSession } from "@/lib/auth/session";
+import { apiDelete, apiGet, apiPost } from "@/lib/api/client";
+import type {
+  AdminCard,
+  AdminCardsPage,
+  CardGameCount,
+  SyncSourceInfo,
+} from "@/lib/interfaces/admin";
 import type {
   AdminUserSummary,
   ImpersonationAuditEntry,
@@ -8,28 +13,7 @@ import type {
   SyncState,
 } from "@magic-vault/shared";
 
-export interface AdminCard {
-  id: number;
-  cardId: string;
-  gameKey: string;
-  lang: string;
-  name: string;
-  setCode: string;
-  updatedAt: string;
-}
-
-export interface AdminCardsPage {
-  cards: AdminCard[];
-  total: number;
-  page: number;
-  limit: number;
-}
-
-export interface SyncSourceInfo {
-  gameKey: string;
-  label: string;
-  languages: string[];
-}
+export type { AdminCard, AdminCardsPage, CardGameCount, SyncSourceInfo };
 
 export async function listSyncSources(): Promise<{
   success: boolean;
@@ -60,11 +44,6 @@ export async function getSyncStatus(): Promise<{
   data: SyncState;
 }> {
   return apiGet<{ success: boolean; data: SyncState }>("/api/admin/sync");
-}
-
-export interface CardGameCount {
-  gameKey: string;
-  count: number;
 }
 
 export async function listCardGameKeys(): Promise<{
@@ -114,12 +93,6 @@ export async function syncCardById(
   });
 }
 
-export async function createSyncEventSource(): Promise<EventSource> {
-  const session = await getAuthSession();
-  const url = `${API_BASE}/api/admin/sync/stream${session?.token ? `?token=${encodeURIComponent(session.token)}` : ""}`;
-  return new EventSource(url);
-}
-
 export async function searchAdminUsers(
   search: string,
 ): Promise<Result<AdminUserSummary[]>> {
@@ -146,4 +119,13 @@ export async function listImpersonationAudit(): Promise<
 
 export async function stopImpersonation(): Promise<Result<null>> {
   return apiPost<Result<null>>("/api/admin/impersonate/stop");
+}
+
+export async function testServerRollbar(): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  return apiPost<{ success: boolean; message: string }>(
+    "/api/admin/rollbar/test",
+  );
 }

@@ -11,11 +11,12 @@ import { useCardScanner } from "@/features/scanner/api/use-card-scanner";
 import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
 import { useRegisterScannerIsland } from "@/features/scanner/api/use-scanner-island";
 import { useSerial, useSerialMessage } from "@/features/scanner/api/use-serial";
+import { BinLimitDialog } from "@/features/scanner/components/bin-limit-dialog";
 import { ScannerMenu } from "@/features/scanner/components/scanner-menu";
 import { ScannerOverlay } from "@/features/scanner/components/scanner-overlay";
-import { SCANNABLE_STATUSES } from "@/features/scanner/constants";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useRole } from "@/hooks/use-role";
+import { SCANNABLE_STATUSES } from "@/lib/constants/scanner";
 import { cn } from "@/lib/utils";
 import type { CardScannerProps } from "@magic-vault/shared";
 import { IconEye } from "@tabler/icons-react";
@@ -31,11 +32,14 @@ export function CardScanner({ className, compact }: CardScannerProps) {
   const isMobile = useIsMobile();
   const {
     addCard,
+    addUnmatchedCard,
     sendCatchAllBin,
     autoFeed,
     setAutoFeed,
     registerCardArrivedHook,
     registerPauseHook,
+    binLimitReached,
+    resolveBinLimit,
   } = useScannedCards();
   const registerIsland = useRegisterScannerIsland();
   const {
@@ -43,11 +47,14 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     isReady,
     firmwareVersion,
     connect,
+    connectBluetooth,
     disconnect,
     sendTest,
     sendCommand,
     receiveResponse,
   } = useSerial();
+  const bluetoothSupported =
+    typeof navigator !== "undefined" && !!navigator.bluetooth;
   const [isFeeding, setIsFeeding] = useState(false);
   const [isClearingDevice, setIsClearingDevice] = useState(false);
   const { hasCatchAll } = useBinConfigs();
@@ -77,6 +84,9 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     selectCamera,
     allowDuplicates,
     setAllowDuplicates,
+    ocrEnabled,
+    setOcrEnabled,
+    ocrSupported,
     cameraSource,
     phonePairingStatus,
     phonePairingUrl,
@@ -90,7 +100,10 @@ export function CardScanner({ className, compact }: CardScannerProps) {
         addCard(cards[0], capturedImageUrl, cards.slice(1));
       }
     },
-    onNoMatch: sendCatchAllBin,
+    onNoMatch: (capturedImageUrl) => {
+      addUnmatchedCard(capturedImageUrl);
+      sendCatchAllBin();
+    },
     rotated: !isMobile,
   });
   const scanningBlocked = apiHealthCheck?.status === "error" || isAtScanLimit;
@@ -135,6 +148,11 @@ export function CardScanner({ className, compact }: CardScannerProps) {
       });
     }
   });
+
+  const handleCardArrived = useCallback(() => {
+    if (status === "paused") handleResume();
+    captureCard();
+  }, [status, handleResume, captureCard]);
 
   const handleFeed = useCallback(async () => {
     setIsFeeding(true);
@@ -193,8 +211,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
             collectionGuid: activeCollection?.guid,
           });
         } else {
-          // Feeder confirmed a card reached module 1 - capture it now.
-          captureCard();
+          handleCardArrived();
         }
       } catch {
         toast.error(t("cardScanner.feedError.title"), {
@@ -213,7 +230,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
   }, [
     sendCommand,
     receiveResponse,
-    captureCard,
+    handleCardArrived,
     handlePause,
     t,
     activeCollection?.guid,
@@ -244,18 +261,44 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     }
   }, [sendCommand, receiveResponse, t]);
 
+  const handleForceScanClick = useCallback(async () => {
+    try {
+      const sent = await sendCommand(JSON.stringify({ readIR: true }));
+      if (sent) {
+        const response = await receiveResponse(2000);
+        if (response) {
+          const parsed = JSON.parse(response) as Record<string, unknown>;
+          if (Array.isArray(parsed.ir) && !parsed.ir[0]) {
+            toast.error(t("cardScanner.noCardDetected.title"), {
+              description: t("cardScanner.noCardDetected.description"),
+            });
+            return;
+          }
+        }
+      }
+    } catch {
+      // Malformed/missing response - fall through to the scan attempt.
+    }
+    handleForceScan();
+  }, [sendCommand, receiveResponse, handleForceScan, t]);
+
   const handleSkipDuplicate = useCallback(() => {
     sendCatchAllBin();
     handleSkipDuplicateFromScanner();
   }, [sendCatchAllBin, handleSkipDuplicateFromScanner]);
 
   useEffect(() => {
-    return registerCardArrivedHook(captureCard);
-  }, [registerCardArrivedHook, captureCard]);
+    return registerCardArrivedHook(handleCardArrived);
+  }, [registerCardArrivedHook, handleCardArrived]);
 
   useEffect(() => {
     return registerPauseHook(handlePause);
   }, [registerPauseHook, handlePause]);
+
+  const handleContinueAfterBinLimit = useCallback(async () => {
+    await resolveBinLimit();
+    handleResume();
+  }, [resolveBinLimit, handleResume]);
 
   useEffect(() => {
     registerIsland({
@@ -266,7 +309,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
       isFeeding,
       isClearingDevice,
       handleForceAddDuplicate,
-      handleForceScan,
+      handleForceScan: handleForceScanClick,
       handleSkipDuplicate,
       handlePause: () => {
         setAutoFeed(false);
@@ -284,7 +327,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     isFeeding,
     isClearingDevice,
     handleForceAddDuplicate,
-    handleForceScan,
+    handleForceScanClick,
     handleSkipDuplicate,
     handlePause,
     handleResume,
@@ -375,6 +418,8 @@ export function CardScanner({ className, compact }: CardScannerProps) {
           isConnected={isConnected}
           autoFeed={autoFeed}
           allowDuplicates={allowDuplicates}
+          ocrEnabled={ocrEnabled}
+          ocrSupported={ocrSupported}
           zoom={zoom}
           zoomRange={zoomRange}
           cameras={cameras}
@@ -389,13 +434,20 @@ export function CardScanner({ className, compact }: CardScannerProps) {
           onStartPhonePairing={startPhonePairing}
           onStopPhonePairing={stopPhonePairing}
           onScannerConnect={connect}
+          onScannerConnectBluetooth={connectBluetooth}
+          bluetoothSupported={bluetoothSupported}
           onScannerDisconnect={disconnect}
           onScannerRetry={sendTest}
           onCalibrate={() => navigate("/app/calibrate")}
           onAutoFeedChange={setAutoFeed}
           onAllowDuplicatesChange={setAllowDuplicates}
+          onOcrEnabledChange={setOcrEnabled}
         />
       </div>
+      <BinLimitDialog
+        bin={binLimitReached}
+        onContinue={handleContinueAfterBinLimit}
+      />
     </div>
   );
 }

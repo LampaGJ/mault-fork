@@ -1,19 +1,13 @@
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api/client";
+import type { GameInput, SampleCard } from "@/lib/interfaces/games";
 import type {
-  FieldMeta,
   Game,
   GameCoverage,
   Result,
 } from "@magic-vault/shared";
 import { queryOptions } from "@tanstack/react-query";
 
-export interface GameInput {
-  key: string;
-  name: string;
-  fieldDefinitions: FieldMeta[];
-  apiDocsUrl?: string | null;
-  isActive: boolean;
-}
+export type { GameInput, SampleCard };
 
 export async function listGames(): Promise<Result<Game[]>> {
   return apiGet<Result<Game[]>>("/api/games");
@@ -62,9 +56,15 @@ export async function deleteGame(guid: string): Promise<Result<null>> {
   return apiDelete<Result<null>>(`/api/games/${guid}`);
 }
 
-export interface SampleCard {
-  name: string;
-  raw: unknown;
+export async function checkGameKey(
+  key: string,
+  excludeGuid?: string,
+): Promise<Result<{ available: boolean }>> {
+  const params = new URLSearchParams({ key });
+  if (excludeGuid) params.set("excludeGuid", excludeGuid);
+  return apiGet<Result<{ available: boolean }>>(
+    `/api/games/check-key?${params.toString()}`,
+  );
 }
 
 export async function getSampleCard(

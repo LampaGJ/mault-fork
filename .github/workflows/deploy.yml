@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: deploy-master
+  group: master-release-pipeline
   cancel-in-progress: false
 
 jobs:
@@ -101,7 +101,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
-            git commit -m "chore(release): v${{ steps.appversion.outputs.version }}"
+            git commit -m "chore(release): v${{ steps.appversion.outputs.version }} [skip ci]"
             git tag "v${{ steps.appversion.outputs.version }}"
             git push
             git push origin "v${{ steps.appversion.outputs.version }}"

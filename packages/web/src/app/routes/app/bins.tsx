@@ -3,11 +3,15 @@ import {
   BinConfigsProvider,
   useBinConfigs,
 } from "@/features/bins/api/use-bin-configs";
+import { AutoAssignPanel } from "@/features/bins/components/auto-assign-panel";
 import { BinConfigPanel } from "@/features/bins/components/bin-config-panel";
 import { BinList } from "@/features/bins/components/bin-list";
 import { NoGameBanner } from "@/features/bins/components/no-game-banner";
 import { NonEnglishRulesBanner } from "@/features/bins/components/non-english-rules-banner";
 import { PresetSelector } from "@/features/bins/components/preset-selector";
+import { RepackPanel } from "@/features/bins/components/repack-panel";
+import { RepackTour } from "@/features/bins/components/repack-tour";
+import { SortingRulesTour } from "@/features/bins/components/sorting-rules-tour";
 import { useCollections } from "@/features/collections/api/use-collections";
 import { CollectionSwitcher } from "@/features/collections/components/collection-switcher";
 import { useIsMobile } from "@/hooks/use-is-mobile";
@@ -16,13 +20,23 @@ import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 
+function BinsHelpTour({ className }: { className?: string }) {
+  const { selectedSet } = useBinConfigs();
+  return selectedSet?.isRepackMode ? (
+    <RepackTour className={className} />
+  ) : (
+    <SortingRulesTour className={className} />
+  );
+}
+
 function MobileBins() {
   const { t } = useTranslation("bins");
   const { selectedBin } = useBinConfigs();
 
   return (
     <div className="flex-1 min-h-0 relative overflow-hidden">
-      <div className="size-full overflow-y-auto @container p-4">
+      <div className="size-full overflow-y-auto @container p-4 flex flex-col gap-4">
+        <RepackPanel />
         <BinConfigPanel />
       </div>
       <Drawer>
@@ -39,6 +53,7 @@ function MobileBins() {
           <div className="overflow-y-auto p-4 flex flex-col gap-4 max-h-[calc(80vh-2rem)]">
             <CollectionSwitcher />
             <PresetSelector />
+            <AutoAssignPanel />
             <BinList />
           </div>
         </DrawerContent>
@@ -74,9 +89,12 @@ export default function BinsPage() {
       <section className="col-span-4 lg:col-span-3 overflow-hidden flex flex-col h-full border-r p-2 gap-2 bg-sidebar/70">
         <CollectionSwitcher />
         <PresetSelector />
+        <AutoAssignPanel />
         <BinList />
       </section>
-      <section className="col-span-8 lg:col-span-9 overflow-y-auto max-h-full @container p-4">
+      <section className="relative col-span-8 lg:col-span-9 overflow-y-auto max-h-full @container p-4 pt-14 flex flex-col gap-4">
+        <BinsHelpTour className="absolute top-2 right-2 z-10" />
+        <RepackPanel />
         <BinConfigPanel />
       </section>
     </div>

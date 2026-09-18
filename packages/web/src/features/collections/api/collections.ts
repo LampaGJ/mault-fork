@@ -1,5 +1,5 @@
-import { apiDelete, apiGet, apiPost, apiPut, getAuthHeaders, handleForbidden } from "@/lib/api/client";
-import type { Collection, Result, ScannedCard } from "@magic-vault/shared";
+import { API_BASE, apiDelete, apiGet, apiPost, apiPut, getAuthHeaders, handleForbidden } from "@/lib/api/client";
+import type { Collection, Result, ScannedCard, UnmatchedCard } from "@magic-vault/shared";
 import { queryOptions } from "@tanstack/react-query";
 
 export async function loadCollections(): Promise<Result<Collection[]>> {
@@ -16,16 +16,36 @@ export async function createCollection(
   name: string,
   gameGuid: string,
   lang: string,
+  matchThreshold: number | null,
 ): Promise<Result<Collection[]>> {
   return apiPost<Result<Collection[]>>("/api/collections", {
     name,
     gameGuid,
     lang,
+    matchThreshold,
   });
 }
 
-export async function renameCollection(guid: string, name: string): Promise<Result<Collection[]>> {
-  return apiPut<Result<Collection[]>>(`/api/collections/${guid}`, { name });
+export async function updateCollection(
+  guid: string,
+  name: string,
+  matchThreshold: number | null,
+): Promise<Result<Collection[]>> {
+  return apiPut<Result<Collection[]>>(`/api/collections/${guid}`, {
+    name,
+    matchThreshold,
+  });
+}
+
+export async function checkCollectionName(
+  name: string,
+  excludeGuid?: string,
+): Promise<Result<{ available: boolean }>> {
+  const params = new URLSearchParams({ name });
+  if (excludeGuid) params.set("excludeGuid", excludeGuid);
+  return apiGet<Result<{ available: boolean }>>(
+    `/api/collections/check-name?${params.toString()}`,
+  );
 }
 
 export async function activateCollection(guid: string): Promise<Result<Collection[]>> {
@@ -49,20 +69,25 @@ export async function loadCardImage(
   );
 }
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "";
-
 export async function addCollectionCard(
   guid: string,
   record: ScannedCard,
-): Promise<Result<ScannedCard> & { scanLimitReached?: boolean }> {
+): Promise<
+  Result<ScannedCard> & {
+    scanLimitReached?: boolean;
+    binLimitReached?: boolean;
+    binNumber?: number;
+  }
+> {
   const res = await fetch(`${API_BASE}/api/collections/${guid}/cards`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(await getAuthHeaders()) },
     body: JSON.stringify(record),
   });
   await handleForbidden(res);
-  // Return body for success, 423 (locked), and 402 (free-plan scan limit reached)
-  if (res.ok || res.status === 423 || res.status === 402) return res.json();
+  // Return body for success, 423 (locked), 402 (free-plan scan limit reached), and 409 (bin full)
+  if (res.ok || res.status === 423 || res.status === 402 || res.status === 409)
+    return res.json();
   throw new Error(`API error: ${res.status}`);
 }
 
@@ -78,13 +103,15 @@ export async function updateCollectionCard(
   });
 }
 
-export async function setCollectionCardFoil(
+export async function setCollectionCardFoilType(
   guid: string,
   scanId: string,
   isFoil: boolean,
+  foilType: string | null,
 ): Promise<Result<ScannedCard>> {
   return apiPut<Result<ScannedCard>>(`/api/collections/${guid}/cards/${scanId}`, {
     isFoil,
+    foilType,
   });
 }
 
@@ -115,4 +142,26 @@ export async function clearCollectionCards(guid: string): Promise<Result<null>> 
 
 export async function releaseScanLock(guid: string): Promise<Result<null>> {
   return apiDelete<Result<null>>(`/api/collections/${guid}/scan-lock`);
+}
+
+export async function loadUnmatchedCards(guid: string): Promise<Result<UnmatchedCard[]>> {
+  return apiGet<Result<UnmatchedCard[]>>(`/api/collections/${guid}/unmatched`);
+}
+
+export async function addUnmatchedCard(
+  guid: string,
+  record: UnmatchedCard,
+): Promise<Result<UnmatchedCard>> {
+  return apiPost<Result<UnmatchedCard>>(`/api/collections/${guid}/unmatched`, record);
+}
+
+export async function removeUnmatchedCard(
+  guid: string,
+  scanId: string,
+): Promise<Result<null>> {
+  return apiDelete<Result<null>>(`/api/collections/${guid}/unmatched/${scanId}`);
+}
+
+export async function clearUnmatchedCards(guid: string): Promise<Result<null>> {
+  return apiDelete<Result<null>>(`/api/collections/${guid}/unmatched`);
 }

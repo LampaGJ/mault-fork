@@ -19,7 +19,9 @@
     "scannerLayoutVerticalDescription": "Scanner oben, Kartenraster darunter",
     "language": "Sprache"
   },
-  "notifications": {
-    "heading": "Benachrichtigungen"
+  "sessionWrapped": {
+    "heading": "Sitzungs-Rückblick",
+    "description": "Zeigt vor der Exportübersicht einen Wrapped-artigen Rückblick mit Highlights.",
+    "toggleLabel": "Sitzungs-Rückblick aktivieren"
   }
 }

@@ -1,6 +1,13 @@
 import { DeleteDialog } from "@/components/delete-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
@@ -14,6 +21,7 @@ import { useCardFilters } from "@/features/cards/api/use-card-filters";
 import { CardDetailPanel } from "@/features/cards/components/card-detail-panel";
 import { CardToolbar } from "@/features/cards/components/card-toolbar";
 import { ScannedCardItem } from "@/features/cards/components/scanned-card-item";
+import { ScannedCardListItem } from "@/features/cards/components/scanned-card-list-item";
 import { SessionSummaryDialog } from "@/features/cards/components/session-summary-dialog";
 import { useCollectionLocks } from "@/features/collections/api/use-collection-locks";
 import { useCollections } from "@/features/collections/api/use-collections";
@@ -24,18 +32,20 @@ import { ScannerControls } from "@/features/scanner/components/scanner-controls"
 import { ScannerDebug } from "@/features/scanner/components/scanner-debug";
 import { computeStats } from "@/features/scanner/lib/compute-stats";
 
+import { CARD_PAGE_SIZE as PAGE_SIZE } from "@/lib/constants/limits";
+import { CARD_VIEW_MODE_STORAGE_KEY } from "@/lib/constants/storage-keys";
+import type { CardViewMode } from "@/lib/interfaces/cards";
 import {
   IconAlbum,
   IconArrowBarToDown,
   IconBolt,
   IconChevronLeft,
   IconChevronRight,
+  IconSparkles,
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-
-const PAGE_SIZE = 96;
 
 export function CardGrid() {
   const { t } = useTranslation("cards");
@@ -50,7 +60,12 @@ export function CardGrid() {
     elapsedMs,
     autoFeed,
     setAutoFeed,
+    forceFoilType,
+    setForceFoilType,
   } = useScannedCards();
+  const foilOptions = activeCollection?.game?.foilTypes?.length
+    ? activeCollection.game.foilTypes
+    : [t("cardGrid.foilGeneric")];
   const [summaryOpen, setSummaryOpen] = useState(false);
   const scanner = useScannerIsland();
   const { locks, currentUserId } = useCollectionLocks();
@@ -81,6 +96,22 @@ export function CardGrid() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [openScanId, setOpenScanId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
+  const [viewMode, setViewMode] = useState<CardViewMode>(() => {
+    try {
+      return localStorage.getItem(CARD_VIEW_MODE_STORAGE_KEY) === "list"
+        ? "list"
+        : "grid";
+    } catch {
+      return "grid";
+    }
+  });
+
+  const handleViewModeChange = useCallback((mode: CardViewMode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem(CARD_VIEW_MODE_STORAGE_KEY, mode);
+    } catch {}
+  }, []);
 
   const pageCount = Math.max(
     1,
@@ -202,12 +233,29 @@ export function CardGrid() {
             <div className="flex flex-row gap-2 items-center w-full">
               <ScannerControls
                 status={scanner.status}
-                onForceAddDuplicate={scanner.handleForceAddDuplicate}
                 onForceScan={scanner.handleForceScan}
-                onSkipDuplicate={scanner.handleSkipDuplicate}
                 onPause={scanner.handlePause}
                 onResume={scanner.handleResume}
               />
+              <Select
+                value={forceFoilType ?? "none"}
+                onValueChange={(value) =>
+                  setForceFoilType(value === "none" ? null : value)
+                }
+              >
+                <SelectTrigger className="gap-1">
+                  <IconSparkles className="size-3.5" />
+                  <SelectValue placeholder={t("cardGrid.foilNone")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t("cardGrid.foilNone")}</SelectItem>
+                  {foilOptions.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {scanner.isConnected && (
                 <>
                   <Tooltip>
@@ -223,7 +271,9 @@ export function CardGrid() {
                         </Button>
                       }
                     />
-                    <TooltipContent>{t("cardGrid.startTooltip")}</TooltipContent>
+                    <TooltipContent>
+                      {t("cardGrid.startTooltip")}
+                    </TooltipContent>
                   </Tooltip>
                   <Tooltip>
                     <TooltipTrigger
@@ -279,6 +329,7 @@ export function CardGrid() {
         currentCard={openEntry.card}
         alternativeMatches={openEntry.alternativeMatches}
         isFoil={openEntry.isFoil}
+        foilType={openEntry.foilType}
         binNumber={openEntry.binNumber}
         onClose={() => setOpenScanId(null)}
         onRemove={() => {
@@ -321,7 +372,10 @@ export function CardGrid() {
           onToggleSelectAll={toggleSelectAll}
           availableRarities={stats?.rarities}
           availableColors={stats?.colors}
+          availableFoilTypes={stats?.foilTypes}
           cardCount={cards.length}
+          viewMode={viewMode}
+          onViewModeChange={handleViewModeChange}
         />
       </div>
       {filteredAndSorted.length === 0 && (
@@ -332,21 +386,43 @@ export function CardGrid() {
         />
       )}
       <div className="p-2 flex-1">
-        <div className="grid grid-cols-3 @4xl:grid-cols-4 @6xl:grid-cols-6 @7xl:grid-cols-8 gap-2">
-          {pagedCards.map((card) => (
-            <ScannedCardItem
-              key={card.scanId}
-              card={card.card}
-              onOpen={() => setOpenScanId(card.scanId)}
-              binNumber={card.binNumber}
-              isSelected={selectedIds.has(card.scanId)}
-              onToggleSelect={() => toggleSelect(card.scanId)}
-              hasAlternatives={!!card.alternativeMatches?.length}
-              isFoil={card.isFoil}
-              isDownloaded={card.isDownloaded}
-            />
-          ))}
-        </div>
+        {viewMode === "list" ? (
+          <div className="flex flex-col gap-1.5">
+            {pagedCards.map((card) => (
+              <ScannedCardListItem
+                key={card.scanId}
+                card={card.card}
+                onOpen={() => setOpenScanId(card.scanId)}
+                binNumber={card.binNumber}
+                isSelected={selectedIds.has(card.scanId)}
+                onToggleSelect={() => toggleSelect(card.scanId)}
+                hasAlternatives={!!card.alternativeMatches?.length}
+                wasCorrected={card.corrected}
+                isFoil={card.isFoil}
+                foilType={card.foilType}
+                isDownloaded={card.isDownloaded}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 @4xl:grid-cols-4 @6xl:grid-cols-6 @7xl:grid-cols-8 gap-2">
+            {pagedCards.map((card) => (
+              <ScannedCardItem
+                key={card.scanId}
+                card={card.card}
+                onOpen={() => setOpenScanId(card.scanId)}
+                binNumber={card.binNumber}
+                isSelected={selectedIds.has(card.scanId)}
+                onToggleSelect={() => toggleSelect(card.scanId)}
+                hasAlternatives={!!card.alternativeMatches?.length}
+                wasCorrected={card.corrected}
+                isFoil={card.isFoil}
+                foilType={card.foilType}
+                isDownloaded={card.isDownloaded}
+              />
+            ))}
+          </div>
+        )}
         {pageCount > 1 && (
           <div className="flex items-center justify-center gap-3 pt-4">
             <Button
@@ -377,17 +453,36 @@ export function CardGrid() {
 
       {(scanner?.isCameraActive || selectedIds.size > 0) && (
         <div className="sticky bottom-0 z-50 bg-background/80 backdrop-blur-2xl p-2 border-t">
-          <div className="flex flex-row gap-2 items-center w-full">
+          <div className="flex flex-row gap-2 items-center justify-between w-full">
             {scanner?.isCameraActive && (
-              <>
+              <div className="flex flex-row gap-2 items-center">
                 <ScannerControls
                   status={scanner.status}
-                  onForceAddDuplicate={scanner.handleForceAddDuplicate}
                   onForceScan={scanner.handleForceScan}
-                  onSkipDuplicate={scanner.handleSkipDuplicate}
                   onPause={scanner.handlePause}
                   onResume={scanner.handleResume}
                 />
+                <Select
+                  value={forceFoilType ?? "none"}
+                  onValueChange={(value) =>
+                    setForceFoilType(value === "none" ? null : value)
+                  }
+                >
+                  <SelectTrigger className="gap-1">
+                    <IconSparkles className="size-3.5" />
+                    <SelectValue placeholder={t("cardGrid.foilNone")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">
+                      {t("cardGrid.foilNone")}
+                    </SelectItem>
+                    {foilOptions.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 {scanner.isConnected && (
                   <>
                     <Tooltip>
@@ -447,13 +542,10 @@ export function CardGrid() {
                   </>
                 )}
                 <ScannerDebug />
-              </>
+              </div>
             )}
             {selectedIds.size > 0 && (
-              <>
-                {scanner?.isCameraActive && (
-                  <div className="w-px h-5 bg-border mx-1 shrink-0" />
-                )}
+              <div className="flex flex-row gap-2 items-center">
                 <span className="text-sm text-muted-foreground">
                   {t("cardGrid.cardsSelected", { count: selectedIds.size })}
                 </span>
@@ -469,7 +561,7 @@ export function CardGrid() {
                 >
                   {t("cardGrid.delete")}
                 </Button>
-              </>
+              </div>
             )}
           </div>
         </div>
@@ -482,6 +574,8 @@ export function CardGrid() {
         elapsedMs={elapsedMs}
         collectionName={activeCollection?.name ?? "collection"}
         onMarkDownloaded={markDownloaded}
+        gridFilters={filters}
+        gridFilterCount={activeFilterCount}
       />
 
       <DeleteDialog
@@ -491,7 +585,9 @@ export function CardGrid() {
         description={t("cardGrid.deleteCardsDescription", {
           count: selectedIds.size,
         })}
-        confirm={selectedIds.size > 100 ? { type: "keyword" } : { type: "simple" }}
+        confirm={
+          selectedIds.size > 100 ? { type: "keyword" } : { type: "simple" }
+        }
         onConfirm={handleBulkDelete}
       />
     </>

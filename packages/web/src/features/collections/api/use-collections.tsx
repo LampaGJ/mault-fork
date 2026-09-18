@@ -3,20 +3,20 @@ import {
   binsQueryOptions,
   createSet as createSetFn,
 } from "@/features/bins/api/sort-bins";
+import { useModuleCount } from "@/features/calibration/api/use-module-count";
 import {
   activateCollection as activateCollectionFn,
   clearCollectionCards,
   collectionsQueryOptions,
   createCollection as createCollectionFn,
   deleteCollection as deleteCollectionFn,
-  renameCollection as renameCollectionFn,
+  updateCollection as updateCollectionFn,
 } from "@/features/collections/api/collections";
-import { useModuleCount } from "@/features/calibration/api/use-module-count";
 import { useOrg } from "@/features/companies/api/use-organization";
+import { ACTIVE_COLLECTION_STORAGE_KEY } from "@/lib/constants/storage-keys";
 import {
   computeBinCount,
   createDefaultCatchAllOnlyBins,
-  createDefaultColorBins,
   type BinSet,
   type Collection,
 } from "@magic-vault/shared";
@@ -32,8 +32,6 @@ import {
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
-const ACTIVE_KEY = "activeCollectionGuid";
-
 interface CollectionsContextValue {
   collections: Collection[];
   activeCollection: Collection | null;
@@ -44,8 +42,13 @@ interface CollectionsContextValue {
     name: string,
     gameGuid: string,
     lang: string,
+    matchThreshold: number | null,
   ) => Promise<void>;
-  renameCollection: (guid: string, name: string) => Promise<void>;
+  updateCollection: (
+    guid: string,
+    name: string,
+    matchThreshold: number | null,
+  ) => Promise<void>;
   activateCollection: (guid: string) => Promise<void>;
   deleteCollection: (guid: string) => Promise<void>;
   emptyCollection: (guid: string) => Promise<void>;
@@ -68,13 +71,13 @@ export function CollectionsProvider({
   });
 
   const [activeGuid, setActiveGuidState] = useState<string | null>(() =>
-    localStorage.getItem(ACTIVE_KEY),
+    localStorage.getItem(ACTIVE_COLLECTION_STORAGE_KEY),
   );
 
   const setActiveGuid = useCallback((guid: string | null) => {
     setActiveGuidState(guid);
-    if (guid) localStorage.setItem(ACTIVE_KEY, guid);
-    else localStorage.removeItem(ACTIVE_KEY);
+    if (guid) localStorage.setItem(ACTIVE_COLLECTION_STORAGE_KEY, guid);
+    else localStorage.removeItem(ACTIVE_COLLECTION_STORAGE_KEY);
   }, []);
 
   // If the stored guid no longer exists (e.g. collection deleted), clear it
@@ -106,11 +109,13 @@ export function CollectionsProvider({
       name,
       gameGuid,
       lang,
+      matchThreshold,
     }: {
       name: string;
       gameGuid: string;
       lang: string;
-    }) => createCollectionFn(name, gameGuid, lang),
+      matchThreshold: number | null;
+    }) => createCollectionFn(name, gameGuid, lang, matchThreshold),
     onSuccess: async (r, { name }) => {
       if (r.success && r.data) {
         setCollections(r.data);
@@ -124,12 +129,9 @@ export function CollectionsProvider({
           (s) => (s.game?.guid ?? undefined) === gameGuid,
         );
         if (!sameGameSet) {
-          const isMtg = created?.game?.key === "mtg";
           const binsResult = await createSetFn(
             name,
-            isMtg
-              ? createDefaultColorBins(computeBinCount(moduleCount))
-              : createDefaultCatchAllOnlyBins(computeBinCount(moduleCount)),
+            createDefaultCatchAllOnlyBins(computeBinCount(moduleCount)),
             gameGuid,
           );
           if (binsResult.success && binsResult.data) {
@@ -146,9 +148,16 @@ export function CollectionsProvider({
     onError: () => toast.error(t("errors.createFailed")),
   });
 
-  const renameMutation = useMutation({
-    mutationFn: ({ guid, name }: { guid: string; name: string }) =>
-      renameCollectionFn(guid, name),
+  const updateMutation = useMutation({
+    mutationFn: ({
+      guid,
+      name,
+      matchThreshold,
+    }: {
+      guid: string;
+      name: string;
+      matchThreshold: number | null;
+    }) => updateCollectionFn(guid, name, matchThreshold),
     onSuccess: (r) => {
       if (r.success && r.data) setCollections(r.data);
     },
@@ -179,22 +188,27 @@ export function CollectionsProvider({
 
   const isMutating =
     createMutation.isPending ||
-    renameMutation.isPending ||
+    updateMutation.isPending ||
     deleteMutation.isPending ||
     emptyMutation.isPending;
 
   const create = useCallback(
-    async (name: string, gameGuid: string, lang: string) => {
-      await createMutation.mutateAsync({ name, gameGuid, lang });
+    async (
+      name: string,
+      gameGuid: string,
+      lang: string,
+      matchThreshold: number | null,
+    ) => {
+      await createMutation.mutateAsync({ name, gameGuid, lang, matchThreshold });
     },
     [createMutation],
   );
 
-  const rename = useCallback(
-    async (guid: string, name: string) => {
-      await renameMutation.mutateAsync({ guid, name });
+  const update = useCallback(
+    async (guid: string, name: string, matchThreshold: number | null) => {
+      await updateMutation.mutateAsync({ guid, name, matchThreshold });
     },
-    [renameMutation],
+    [updateMutation],
   );
 
   const activate = useCallback(
@@ -229,7 +243,7 @@ export function CollectionsProvider({
         isActivating: false,
         isMutating,
         createCollection: create,
-        renameCollection: rename,
+        updateCollection: update,
         activateCollection: activate,
         deleteCollection: remove,
         emptyCollection: empty,

@@ -1,13 +1,23 @@
 import { reportSerialEvent } from "@/features/notifications/api/notification-settings";
+import {
+  formatCommLog,
+  MAX_COMM_LOG_ENTRIES,
+  type CommLogEntry,
+} from "@/features/scanner/lib/comm-log";
+import {
+  BluetoothTransport,
+  SerialTransport,
+  type ByteTransport,
+} from "@/features/scanner/lib/transports";
 import type {
   FlashEsp32Result,
   SerialBoardType,
   SerialContextValue,
   SerialMessageListener,
   TestResult,
-} from "@/features/scanner/types";
+} from "@/lib/interfaces/scanner";
 import type { BinRoute } from "@magic-vault/shared";
-import { ESPLoader, Transport } from "esptool-js";
+import { ESPLoader, Transport as EspLoaderTransport } from "esptool-js";
 import {
   createContext,
   useCallback,
@@ -19,7 +29,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
-export type { SerialMessageListener } from "@/features/scanner/types";
+export type { SerialMessageListener } from "@/lib/interfaces/scanner";
 
 const SerialContext = createContext<SerialContextValue | null>(null);
 
@@ -29,74 +39,80 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
   const [isReady, setIsReady] = useState(false);
   const [firmwareVersion, setFirmwareVersion] = useState<string | null>(null);
   const [board, setBoard] = useState<SerialBoardType | null>(null);
+  const [transport, setTransport] = useState<SerialContextValue["transport"]>(
+    null,
+  );
   const [isFlashing, setIsFlashing] = useState(false);
   const [flashProgress, setFlashProgress] = useState<number | null>(null);
   const [flashLog, setFlashLog] = useState<string[]>([]);
-  const portRef = useRef<SerialPort | null>(null);
-  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(
-    null,
-  );
-  const writableRef = useRef<WritableStream<Uint8Array> | null>(null);
+  const transportRef = useRef<ByteTransport | null>(null);
   const writeQueueRef = useRef<Promise<void>>(Promise.resolve());
   const bufferRef = useRef("");
   const pendingRef = useRef<Array<(line: string) => void>>([]);
   const listenersRef = useRef(new Set<SerialMessageListener>());
   const disconnectingRef = useRef<Promise<void> | null>(null);
   const preTestHookRef = useRef<(() => Promise<void>) | null>(null);
+  const commLogRef = useRef<CommLogEntry[]>([]);
 
   const decoderRef = useRef(new TextDecoder());
 
-  const startReading = useCallback(
-    async (
-      reader: ReadableStreamDefaultReader<Uint8Array>,
-      onEnd?: () => void,
-    ) => {
-      try {
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          if (value) {
-            bufferRef.current += decoderRef.current.decode(value, {
-              stream: true,
-            });
-            const lines = bufferRef.current.split("\n");
-            bufferRef.current = lines.pop() || "";
-            for (const line of lines) {
-              const rawTrimmed = line.trim();
-              if (!rawTrimmed) continue;
-
-              const jsonStart = rawTrimmed.search(/[{[]/);
-              const trimmed =
-                jsonStart > 0 ? rawTrimmed.slice(jsonStart) : rawTrimmed;
-
-              console.log("[Serial] ←", trimmed); // eslint-disable-line no-console -- hardware debug trace
-
-              try {
-                const parsed = JSON.parse(trimmed);
-                for (const listener of listenersRef.current) {
-                  listener(parsed);
-                }
-              } catch {
-                console.warn("[Serial] Non-JSON message:", trimmed);
-              }
-
-              const pending = pendingRef.current.shift();
-              if (pending) {
-                pending(trimmed);
-              }
-            }
-          }
-        }
-      } catch (e) {
-        // Reader was cancelled (disconnect) - expected
-        if (!(e instanceof DOMException && e.name === "NetworkError")) {
-          console.error("[Serial] Read error:", e);
-        }
-      } finally {
-        onEnd?.();
+  const pushCommLog = useCallback(
+    (direction: CommLogEntry["direction"], text: string) => {
+      commLogRef.current.push({ direction, text, timestamp: Date.now() });
+      if (commLogRef.current.length > MAX_COMM_LOG_ENTRIES) {
+        commLogRef.current.shift();
       }
     },
     [],
+  );
+
+  const getCommLog = useCallback(() => [...commLogRef.current], []);
+
+  const copyCommLog = useCallback(async () => {
+    const entries = getCommLog();
+    if (entries.length === 0) {
+      toast.error(t("serial.commLogEmpty"));
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(formatCommLog(entries));
+      toast.success(t("serial.commLogCopied"));
+    } catch {
+      toast.error(t("serial.commLogCopyFailed"));
+    }
+  }, [getCommLog, t]);
+
+  const handleIncomingChunk = useCallback(
+    (chunk: Uint8Array) => {
+      bufferRef.current += decoderRef.current.decode(chunk, { stream: true });
+      const lines = bufferRef.current.split("\n");
+      bufferRef.current = lines.pop() || "";
+      for (const line of lines) {
+        const rawTrimmed = line.trim();
+        if (!rawTrimmed) continue;
+
+        const jsonStart = rawTrimmed.search(/[{[]/);
+        const trimmed = jsonStart > 0 ? rawTrimmed.slice(jsonStart) : rawTrimmed;
+
+        console.log("[Device] ←", trimmed); // eslint-disable-line no-console -- hardware debug trace
+        pushCommLog("received", trimmed);
+
+        try {
+          const parsed = JSON.parse(trimmed);
+          for (const listener of listenersRef.current) {
+            listener(parsed);
+          }
+        } catch {
+          console.warn("[Device] Non-JSON message:", trimmed);
+        }
+
+        const pending = pendingRef.current.shift();
+        if (pending) {
+          pending(trimmed);
+        }
+      }
+    },
+    [pushCommLog],
   );
 
   const waitForLine = useCallback((timeoutMs: number): Promise<string> => {
@@ -120,28 +136,30 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const sendCommand = useCallback((data: string): Promise<boolean> => {
-    if (!portRef.current || !writableRef.current) return Promise.resolve(false);
+  const sendCommand = useCallback(
+    (data: string): Promise<boolean> => {
+      if (!transportRef.current) return Promise.resolve(false);
 
-    return new Promise<boolean>((resolve) => {
-      writeQueueRef.current = writeQueueRef.current.then(async () => {
-        if (!writableRef.current) {
-          resolve(false);
-          return;
-        }
-        const writer = writableRef.current.getWriter();
-        try {
-          console.log("[Serial] →", data.trim()); // eslint-disable-line no-console -- hardware debug trace
-          await writer.write(new TextEncoder().encode(data));
-          resolve(true);
-        } catch {
-          resolve(false);
-        } finally {
-          writer.releaseLock();
-        }
+      return new Promise<boolean>((resolve) => {
+        writeQueueRef.current = writeQueueRef.current.then(async () => {
+          const activeTransport = transportRef.current;
+          if (!activeTransport) {
+            resolve(false);
+            return;
+          }
+          try {
+            console.log("[Device] →", data.trim()); // eslint-disable-line no-console -- hardware debug trace
+            pushCommLog("sent", data.trim());
+            await activeTransport.write(new TextEncoder().encode(data));
+            resolve(true);
+          } catch {
+            resolve(false);
+          }
+        });
       });
-    });
-  }, []);
+    },
+    [pushCommLog],
+  );
 
   const sendTest = useCallback(async (): Promise<TestResult> => {
     const sent = await sendCommand(JSON.stringify({ test: true }) + "\n");
@@ -163,36 +181,26 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
   }, [sendCommand, waitForLine]);
 
   const disconnect = useCallback(() => {
-    const port = portRef.current;
-    const reader = readerRef.current;
+    const activeTransport = transportRef.current;
 
-    portRef.current = null;
-    readerRef.current = null;
-    writableRef.current = null;
+    transportRef.current = null;
     writeQueueRef.current = Promise.resolve();
     setIsConnected(false);
     setIsReady(false);
     setFirmwareVersion(null);
     setBoard(null);
+    setTransport(null);
 
-    // Reject any outstanding waiters
     for (const pending of pendingRef.current) {
       pending("");
     }
     pendingRef.current = [];
     bufferRef.current = "";
 
-    // Async cleanup - stored so connect() can await it
     const cleanup = (async () => {
-      if (reader) {
+      if (activeTransport) {
         try {
-          await reader.cancel();
-        } catch {}
-      }
-
-      if (port) {
-        try {
-          await port.close();
+          await activeTransport.close();
         } catch {}
       }
     })();
@@ -204,45 +212,32 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     return cleanup;
   }, []);
 
-  const openPort = useCallback(
-    async (port: SerialPort): Promise<boolean> => {
-      if (!port.readable || !port.writable) {
-        try {
-          await port.open({ baudRate: 9600 });
-        } catch {
-          toast.error(t("serial.connectionFailed.title"), {
-            description: t("serial.connectionFailed.description"),
-          });
-          void reportSerialEvent({
-            command: "connect",
-            sent: false,
-            response: null,
-          });
-          return false;
-        }
-      }
-
-      portRef.current = port;
-      writableRef.current = port.writable;
-
-      const reader = port.readable!.getReader();
-      readerRef.current = reader;
-      decoderRef.current = new TextDecoder();
-
-      setIsConnected(true);
-
-      startReading(reader, () => {
-        if (portRef.current === port) {
-          console.warn("[Serial] Stream ended unexpectedly, disconnecting");
+  const openTransport = useCallback(
+    async (newTransport: ByteTransport): Promise<boolean> => {
+      transportRef.current = newTransport;
+      newTransport.onData(handleIncomingChunk);
+      newTransport.onError(() => {
+        toast.error(t("serial.connectionLost.title"), {
+          description: t("serial.connectionLost.description"),
+        });
+        void reportSerialEvent({ command: "connect", sent: false, response: null });
+      });
+      newTransport.onDisconnect(() => {
+        if (transportRef.current === newTransport) {
+          console.warn("[Device] Connection lost, disconnecting");
           disconnect();
         }
       });
+      await newTransport.start();
+
+      setIsConnected(true);
+      setTransport(newTransport.kind);
 
       (async () => {
         const bootLinePromise = waitForLine(5000);
         await sendCommand(JSON.stringify({ getStatus: true }) + "\n");
         const bootLine = await bootLinePromise;
-        if (!portRef.current) return;
+        if (transportRef.current !== newTransport) return;
         try {
           const parsed = bootLine ? JSON.parse(bootLine) : null;
           if (typeof parsed?.version === "string") {
@@ -255,15 +250,20 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
         if (preTestHookRef.current) {
           await preTestHookRef.current();
         }
-        if (!portRef.current) return;
+        if (transportRef.current !== newTransport) return;
         toast.info(t("serial.testingDevice"));
         const { ok, error: testError } = await sendTest();
-        if (!portRef.current) return;
+        if (transportRef.current !== newTransport) return;
+        const copyAction = {
+          label: t("serial.copyCommunication"),
+          onClick: () => copyCommLog(),
+        };
         if (ok) {
-          toast.success(t("serial.deviceReady"));
+          toast.success(t("serial.deviceReady"), { action: copyAction });
         } else {
           toast.error(t("serial.deviceTestFailed.title"), {
             description: testError ?? t("serial.deviceTestFailed.description"),
+            action: copyAction,
           });
           void reportSerialEvent({
             command: "test",
@@ -275,30 +275,63 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
 
       return true;
     },
-    [startReading, waitForLine, sendCommand, sendTest, disconnect, t],
+    [handleIncomingChunk, waitForLine, sendCommand, sendTest, disconnect, t, copyCommLog],
   );
 
   const connect = useCallback(async () => {
     if (disconnectingRef.current) {
       await disconnectingRef.current;
     }
-    if (portRef.current) return;
+    if (transportRef.current) return;
+    if (!navigator.serial) return;
 
-    let port: SerialPort;
-    try {
-      port = await navigator.serial.requestPort();
-    } catch {
-      // User cancelled the port picker
+    const result = await SerialTransport.requestAndOpen();
+    if (!result.ok) {
+      if (result.reason === "cancelled") return;
+      toast.error(t("serial.connectionFailed.title"), {
+        description: t("serial.connectionFailed.description"),
+      });
+      void reportSerialEvent({ command: "connect", sent: false, response: null });
       return;
     }
 
-    await openPort(port);
-  }, [openPort]);
+    await openTransport(result.transport);
+  }, [openTransport, t]);
+
+  const connectBluetooth = useCallback(async () => {
+    if (disconnectingRef.current) {
+      await disconnectingRef.current;
+    }
+    if (transportRef.current) return;
+    if (!navigator.bluetooth) return;
+
+    const result = await BluetoothTransport.requestAndConnect();
+    if (!result.ok) {
+      if (result.reason === "cancelled") return;
+      if (result.reason === "permission-blocked") {
+        toast.error(t("serial.connectionFailed.title"), {
+          description: t("serial.bluetoothPermissionBlocked"),
+        });
+        void reportSerialEvent({ command: "connect", sent: false, response: null });
+        return;
+      }
+      toast.error(t("serial.connectionFailed.title"), {
+        description: result.message || t("serial.connectionFailed.description"),
+      });
+      void reportSerialEvent({ command: "connect", sent: false, response: null });
+      return;
+    }
+
+    await openTransport(result.transport);
+  }, [openTransport, t]);
 
   const flashEsp32 = useCallback(
     async (firmwareUrl: string): Promise<FlashEsp32Result> => {
-      const port = portRef.current;
-      if (!port) return { success: false, error: "Not connected." };
+      const activeTransport = transportRef.current;
+      if (!activeTransport || activeTransport.kind !== "serial") {
+        return { success: false, error: "Not connected via USB." };
+      }
+      const port = (activeTransport as SerialTransport).port;
 
       setIsFlashing(true);
       setFlashProgress(0);
@@ -313,9 +346,9 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
         }
         const firmwareData = new Uint8Array(await response.arrayBuffer());
 
-        const transport = new Transport(port);
+        const espTransport = new EspLoaderTransport(port);
         const loader = new ESPLoader({
-          transport,
+          transport: espTransport,
           baudrate: 115200,
           terminal: {
             clean: () => setFlashLog([]),
@@ -337,12 +370,8 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
           },
         });
         await loader.after("hard_reset");
-        await transport.disconnect();
+        await espTransport.disconnect();
 
-        // Don't try to reopen the port ourselves - a hard reset on a native
-        // USB CDC board (ESP32-S3) fully re-enumerates the USB device, which
-        // isn't reliably fast or consistent enough to race against from
-        // here. The dialog tells the user to unplug/replug instead.
         return { success: true };
       } catch (e) {
         return {
@@ -360,7 +389,11 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!navigator.serial) return;
     const handleDisconnect = (event: Event) => {
-      if (portRef.current && portRef.current === (event.target as SerialPort)) {
+      const activeTransport = transportRef.current;
+      if (
+        activeTransport?.kind === "serial" &&
+        (activeTransport as SerialTransport).port === (event.target as SerialPort)
+      ) {
         console.warn("[Serial] Device unplugged");
         disconnect();
       }
@@ -424,10 +457,11 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
   );
 
   const binBusyRef = useRef(false);
+  const isRouteBusy = useCallback(() => binBusyRef.current, []);
 
   const sendRoute = useCallback(
     async (route: BinRoute): Promise<unknown | null> => {
-      if (!portRef.current || !writableRef.current) return null;
+      if (!transportRef.current) return null;
       if (binBusyRef.current) return null;
 
       binBusyRef.current = true;
@@ -445,7 +479,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
         try {
           return JSON.parse(response);
         } catch {
-          console.warn("[Serial] Non-JSON response:", response);
+          console.warn("[Device] Non-JSON response:", response);
           return null;
         }
       } finally {
@@ -462,9 +496,12 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
         isReady,
         firmwareVersion,
         board,
+        transport,
         connect,
+        connectBluetooth,
         disconnect,
         sendRoute,
+        isRouteBusy,
         sendTest,
         sendCommand: sendCommandWithNewline,
         receiveResponse,

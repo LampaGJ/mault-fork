@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { DynamicPopover } from "@/components/ui/responsive-popover";
 import { WatcherStack } from "@/components/ui/watcher-stack";
 import { CardFilterPopover } from "@/features/cards/components/card-filter-popover";
-import type { CardToolbarProps } from "@/features/cards/types";
+import type { CardToolbarProps } from "@/lib/interfaces/cards";
 import { cn } from "@/lib/utils";
 import type { FieldMeta } from "@magic-vault/shared";
 import {
@@ -13,6 +13,8 @@ import {
   IconCheck,
   IconCheckbox,
   IconDownload,
+  IconLayoutGrid,
+  IconLayoutList,
   IconTrash,
 } from "@tabler/icons-react";
 import type { TFunction } from "i18next";
@@ -84,7 +86,10 @@ export function CardToolbar({
   onToggleSelectAll,
   availableRarities,
   availableColors,
+  availableFoilTypes,
   cardCount,
+  viewMode,
+  onViewModeChange,
 }: CardToolbarProps) {
   const { t } = useTranslation("cards");
   const [clearAllDialogOpen, setClearAllDialogOpen] = useState(false);
@@ -149,7 +154,26 @@ export function CardToolbar({
         activeFilterCount={activeFilterCount}
         availableRarities={availableRarities ?? []}
         availableColors={availableColors ?? []}
+        availableFoilTypes={availableFoilTypes ?? []}
       />
+      <ButtonGroup className="shrink-0">
+        <Button
+          variant={viewMode === "grid" ? "secondary" : "outline"}
+          size="icon"
+          onClick={() => onViewModeChange("grid")}
+          title={t("cardToolbar.gridView")}
+        >
+          <IconLayoutGrid className="size-4" />
+        </Button>
+        <Button
+          variant={viewMode === "list" ? "secondary" : "outline"}
+          size="icon"
+          onClick={() => onViewModeChange("list")}
+          title={t("cardToolbar.listView")}
+        >
+          <IconLayoutList className="size-4" />
+        </Button>
+      </ButtonGroup>
       {onToggleSelectAll && (
         <Button
           variant="outline"
@@ -175,6 +199,7 @@ export function CardToolbar({
             disabled={!hasCards}
             className="shrink-0"
             title={t("cardToolbar.sessionSummaryExport")}
+            data-tour="export-collection"
           >
             <IconDownload className="size-4" />
           </Button>

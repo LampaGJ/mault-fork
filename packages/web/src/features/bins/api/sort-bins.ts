@@ -3,10 +3,14 @@ import type {
   BinRuleGroup,
   BinSet,
   DefaultBinInit,
+  RepackSlot,
   Result,
 } from "@magic-vault/shared";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api/client";
+import type { BinSetAuditEntry } from "@/lib/interfaces/audit";
 import { queryOptions } from "@tanstack/react-query";
+
+export type { BinSetAuditEntry };
 
 export async function loadSets(): Promise<Result<BinSet[]>> {
   return apiGet<Result<BinSet[]>>("/api/bins");
@@ -45,21 +49,40 @@ export async function deleteSet(guid: string): Promise<Result<BinSet[]>> {
   return apiDelete<Result<BinSet[]>>(`/api/bins/${guid}`);
 }
 
+export async function checkSetName(
+  name: string,
+  gameGuid?: string,
+  excludeGuid?: string,
+): Promise<Result<{ available: boolean }>> {
+  const params = new URLSearchParams({ name });
+  if (gameGuid) params.set("gameGuid", gameGuid);
+  if (excludeGuid) params.set("excludeGuid", excludeGuid);
+  return apiGet<Result<{ available: boolean }>>(
+    `/api/bins/check-name?${params.toString()}`,
+  );
+}
+
 export async function saveBinConfig({
   binNumber,
   rules,
   isCatchAll,
+  isOverride,
+  cardLimit,
   gameGuid,
 }: {
   binNumber: number;
   rules: BinRuleGroup;
   isCatchAll?: boolean;
+  isOverride?: boolean;
+  cardLimit?: number | null;
   gameGuid?: string;
 }): Promise<Result<BinConfig[]>> {
   const params = gameGuid ? `?${new URLSearchParams({ gameGuid })}` : "";
   return apiPut<Result<BinConfig[]>>(`/api/bins/bins/${binNumber}${params}`, {
     rules,
     isCatchAll,
+    isOverride,
+    cardLimit,
   });
 }
 
@@ -71,11 +94,43 @@ export async function clearBinConfig(
   return apiDelete<Result<null>>(`/api/bins/bins/${binNumber}${params}`);
 }
 
-export interface BinSetAuditEntry {
-  guid: string;
-  binSetGuid: string;
-  snapshot: BinConfig[];
-  createdAt: string;
+export async function emptyBin(
+  binNumber: number,
+  gameGuid?: string,
+): Promise<Result<BinConfig[]>> {
+  const params = gameGuid ? `?${new URLSearchParams({ gameGuid })}` : "";
+  return apiPost<Result<BinConfig[]>>(
+    `/api/bins/bins/${binNumber}/empty${params}`,
+  );
+}
+
+export async function setAutoAssignField(
+  guid: string,
+  field: string | null,
+): Promise<Result<BinSet[]>> {
+  return apiPut<Result<BinSet[]>>(`/api/bins/${guid}/auto-assign`, { field });
+}
+
+export async function resetAutoAssign(guid: string): Promise<Result<BinSet[]>> {
+  return apiPost<Result<BinSet[]>>(`/api/bins/${guid}/auto-assign/reset`);
+}
+
+export async function setScanOnly(
+  guid: string,
+  enabled: boolean,
+): Promise<Result<BinSet[]>> {
+  return apiPut<Result<BinSet[]>>(`/api/bins/${guid}/scan-only`, { enabled });
+}
+
+export async function setRepackConfig(
+  guid: string,
+  config: {
+    isRepackMode: boolean;
+    repackSlots: RepackSlot[];
+    repackAllowDuplicates: boolean;
+  },
+): Promise<Result<BinSet[]>> {
+  return apiPut<Result<BinSet[]>>(`/api/bins/${guid}/repack`, config);
 }
 
 export async function getBinSetHistory(setGuid: string): Promise<Result<BinSetAuditEntry[]>> {

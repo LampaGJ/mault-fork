@@ -1,9 +1,11 @@
-import type { BinConfigsContextValue } from "@/features/bins/types";
+import type { BinConfigsContextValue } from "@/lib/interfaces/bins";
 import {
   BinConfig,
   BinRuleGroup,
   BinSet,
   computeBinCount,
+  DEFAULT_BIN_CAPACITY,
+  type RepackSlot,
 } from "@magic-vault/shared";
 
 import {
@@ -12,9 +14,14 @@ import {
   clearBinConfig as clearBinConfigAction,
   createSet as createSetAction,
   deleteSet as deleteSetAction,
+  emptyBin as emptyBinAction,
   renameSet as renameSetAction,
+  resetAutoAssign as resetAutoAssignAction,
   saveBinConfig as saveBinConfigAction,
   saveSet as saveSetAction,
+  setAutoAssignField as setAutoAssignFieldAction,
+  setRepackConfig as setRepackConfigAction,
+  setScanOnly as setScanOnlyAction,
 } from "@/features/bins/api/sort-bins";
 import { useModuleCount } from "@/features/calibration/api/use-module-count";
 import { useCollections } from "@/features/collections/api/use-collections";
@@ -35,7 +42,12 @@ function emptyRules(): BinRuleGroup {
 }
 
 function createEmptyConfig(binNumber: number): BinConfig {
-  return { guid: crypto.randomUUID(), binNumber, rules: emptyRules() };
+  return {
+    guid: crypto.randomUUID(),
+    binNumber,
+    rules: emptyRules(),
+    cardLimit: DEFAULT_BIN_CAPACITY,
+  };
 }
 
 function configsFromSet(
@@ -110,7 +122,7 @@ export function BinConfigsProvider({
 
   const saveBinMutation = useMutation({
     mutationFn: saveBinConfigAction,
-    onMutate: async ({ binNumber, rules, isCatchAll }) => {
+    onMutate: async ({ binNumber, rules, isCatchAll, isOverride, cardLimit }) => {
       await queryClient.cancelQueries({ queryKey: ["bins"] });
       const previous = queryClient.getQueryData<BinSet[]>(["bins"]);
       queryClient.setQueryData<BinSet[]>(["bins"], (old = []) =>
@@ -122,6 +134,9 @@ export function BinConfigsProvider({
             binNumber,
             rules: rules!,
             isCatchAll,
+            isOverride,
+            cardLimit: cardLimit ?? null,
+            lastEmptiedAt: idx >= 0 ? set.bins[idx].lastEmptiedAt : null,
           };
           const bins =
             idx >= 0
@@ -244,6 +259,87 @@ export function BinConfigsProvider({
     onError: () => toast.error(t("useBinConfigs.toasts.deleteSetFailed")),
   });
 
+  const setAutoAssignFieldMutation = useMutation({
+    mutationFn: ({ guid, field }: { guid: string; field: string | null }) =>
+      setAutoAssignFieldAction(guid, field),
+    onSuccess: (result) => {
+      if (result.success && result.data) {
+        queryClient.setQueryData(["bins"], result.data);
+      } else {
+        toast.error(t("useBinConfigs.toasts.autoAssignFailed"));
+      }
+    },
+    onError: () => toast.error(t("useBinConfigs.toasts.autoAssignFailed")),
+  });
+
+  const resetAutoAssignMutation = useMutation({
+    mutationFn: resetAutoAssignAction,
+    onSuccess: (result) => {
+      if (result.success && result.data) {
+        queryClient.setQueryData(["bins"], result.data);
+      } else {
+        toast.error(t("useBinConfigs.toasts.autoAssignResetFailed"));
+      }
+    },
+    onError: () => toast.error(t("useBinConfigs.toasts.autoAssignResetFailed")),
+  });
+
+  const emptyBinMutation = useMutation({
+    mutationFn: (binNumber: number) => emptyBinAction(binNumber, activeGameGuid),
+    onSuccess: (result) => {
+      if (!result.success) {
+        toast.error(t("useBinConfigs.toasts.emptyBinFailed"));
+        return;
+      }
+      if (result.data) {
+        const confirmedBins = result.data;
+        queryClient.setQueryData<BinSet[]>(["bins"], (old = []) =>
+          old.map((set) =>
+            set.isActive && matchesGame(set, activeGameGuid)
+              ? { ...set, bins: confirmedBins }
+              : set,
+          ),
+        );
+      }
+    },
+    onError: () => toast.error(t("useBinConfigs.toasts.emptyBinFailed")),
+  });
+
+  const setScanOnlyMutation = useMutation({
+    mutationFn: ({ guid, enabled }: { guid: string; enabled: boolean }) =>
+      setScanOnlyAction(guid, enabled),
+    onSuccess: (result) => {
+      if (result.success && result.data) {
+        queryClient.setQueryData(["bins"], result.data);
+      } else {
+        toast.error(t("useBinConfigs.toasts.scanOnlyFailed"));
+      }
+    },
+    onError: () => toast.error(t("useBinConfigs.toasts.scanOnlyFailed")),
+  });
+
+  const setRepackConfigMutation = useMutation({
+    mutationFn: ({
+      guid,
+      config,
+    }: {
+      guid: string;
+      config: {
+        isRepackMode: boolean;
+        repackSlots: RepackSlot[];
+        repackAllowDuplicates: boolean;
+      };
+    }) => setRepackConfigAction(guid, config),
+    onSuccess: (result) => {
+      if (result.success && result.data) {
+        queryClient.setQueryData(["bins"], result.data);
+      } else {
+        toast.error(t("useBinConfigs.toasts.repackFailed"));
+      }
+    },
+    onError: () => toast.error(t("useBinConfigs.toasts.repackFailed")),
+  });
+
   const isPending = saveBinMutation.isPending || clearBinMutation.isPending;
   const isActivating = activateSetMutation.isPending;
   const isPresetMutating =
@@ -251,18 +347,37 @@ export function BinConfigsProvider({
     createSetMutation.isPending ||
     saveSetMutation.isPending ||
     renameSetMutation.isPending ||
-    deleteSetMutation.isPending;
+    deleteSetMutation.isPending ||
+    setAutoAssignFieldMutation.isPending ||
+    resetAutoAssignMutation.isPending ||
+    setScanOnlyMutation.isPending ||
+    setRepackConfigMutation.isPending;
 
   const save = useCallback(
-    (binNumber: number, rules: BinRuleGroup, isCatchAll?: boolean) => {
+    (
+      binNumber: number,
+      rules: BinRuleGroup,
+      isCatchAll?: boolean,
+      cardLimit?: number | null,
+      isOverride?: boolean,
+    ) => {
       saveBinMutation.mutate({
         binNumber,
         rules,
         isCatchAll,
+        isOverride,
+        cardLimit,
         gameGuid: activeGameGuid,
       });
     },
     [saveBinMutation, activeGameGuid],
+  );
+
+  const emptyBin = useCallback(
+    async (binNumber: number) => {
+      await emptyBinMutation.mutateAsync(binNumber);
+    },
+    [emptyBinMutation],
   );
 
   const clear = useCallback(
@@ -307,6 +422,45 @@ export function BinConfigsProvider({
     [deleteSetMutation],
   );
 
+  const setAutoAssignFieldFn = useCallback(
+    async (field: string | null) => {
+      if (!selectedSet) return;
+      await setAutoAssignFieldMutation.mutateAsync({
+        guid: selectedSet.guid,
+        field,
+      });
+    },
+    [setAutoAssignFieldMutation, selectedSet],
+  );
+
+  const resetAutoAssignFn = useCallback(async () => {
+    if (!selectedSet) return;
+    await resetAutoAssignMutation.mutateAsync(selectedSet.guid);
+  }, [resetAutoAssignMutation, selectedSet]);
+
+  const setScanOnlyFn = useCallback(
+    async (enabled: boolean) => {
+      if (!selectedSet) return;
+      await setScanOnlyMutation.mutateAsync({ guid: selectedSet.guid, enabled });
+    },
+    [setScanOnlyMutation, selectedSet],
+  );
+
+  const setRepackConfigFn = useCallback(
+    async (config: {
+      isRepackMode: boolean;
+      repackSlots: RepackSlot[];
+      repackAllowDuplicates: boolean;
+    }) => {
+      if (!selectedSet) return;
+      await setRepackConfigMutation.mutateAsync({
+        guid: selectedSet.guid,
+        config,
+      });
+    },
+    [setRepackConfigMutation, selectedSet],
+  );
+
   return (
     <BinConfigsContext
       value={{
@@ -326,11 +480,16 @@ export function BinConfigsProvider({
         selectedSet,
         save,
         clear,
+        emptyBin,
         activateSet: activateSetFn,
         createSet: createSetFn,
         saveSet: saveSetFn,
         renameSet: renameSetFn,
         deleteSet: deleteSetFn,
+        setAutoAssignField: setAutoAssignFieldFn,
+        resetAutoAssign: resetAutoAssignFn,
+        setScanOnly: setScanOnlyFn,
+        setRepackConfig: setRepackConfigFn,
       }}
     >
       {children}

@@ -10,7 +10,6 @@ interface BinRoutingControlsProps {
   isConnected: boolean;
   isSampleRunning: boolean;
   onTestBin: (bin: number) => void;
-  onFeed: () => void;
   onSampleRun: () => void;
 }
 
@@ -19,7 +18,6 @@ export function BinRoutingControls({
   isConnected,
   isSampleRunning,
   onTestBin,
-  onFeed,
   onSampleRun,
 }: BinRoutingControlsProps) {
   const { t } = useTranslation("calibration");
@@ -28,12 +26,9 @@ export function BinRoutingControls({
   const busy = activeBin !== null || isSampleRunning;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2" data-tour="bin-routing-controls">
       <Label>{t("binRoutingControls.label")}</Label>
       <div className="flex items-center gap-2">
-        <Button variant="outline" disabled={!isConnected || busy} onClick={onFeed}>
-          {t("binRoutingControls.feed")}
-        </Button>
         <Button
           variant={isSampleRunning ? "default" : "outline"}
           disabled={!isConnected || busy}

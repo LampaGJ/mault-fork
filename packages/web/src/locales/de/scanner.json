@@ -12,7 +12,12 @@
   "serial": {
     "connectionFailed": {
       "title": "Verbindung fehlgeschlagen",
-      "description": "Port konnte nicht geöffnet werden. Stelle sicher, dass keine andere Anwendung ihn verwendet."
+      "description": "Verbindung fehlgeschlagen. Stelle sicher, dass kein anderes Programm das Gerät verwendet."
+    },
+    "bluetoothPermissionBlocked": "Die Bluetooth-Berechtigung ist für diesen Browser blockiert. Überprüfe die Website-Einstellungen deines Browsers (oder chrome://settings/content/bluetoothDevices), um Bluetooth zuzulassen, und versuche es erneut.",
+    "connectionLost": {
+      "title": "Verbindung getrennt",
+      "description": "Der Sortierer hat die Verbindung unerwartet getrennt. Falls du über USB verbunden bist, stelle sicher, dass keine andere Anwendung (z. B. der serielle Monitor der Arduino IDE) den Port verwendet, und verbinde dich erneut."
     },
     "testingDevice": "Gerät wird getestet…",
     "deviceReady": "Gerät bereit",
@@ -20,6 +25,10 @@
       "title": "Gerätetest fehlgeschlagen",
       "description": "Verbunden, aber keine Antwort erhalten. Versuche eine erneute Verbindung."
     },
+    "copyCommunication": "Kommunikation kopieren",
+    "commLogCopied": "Kommunikationsprotokoll in die Zwischenablage kopiert",
+    "commLogCopyFailed": "Kopieren des Kommunikationsprotokolls fehlgeschlagen",
+    "commLogEmpty": "Noch keine Kommunikation aufgezeichnet",
     "firmwareOutdatedBanner": "Dein Sortierer läuft mit Firmware v{{version}}, älter als die aktuelle v{{latest}}. Lade firmware/main/main.ino erneut hoch, um zu aktualisieren.",
     "firmwareVersionMissingBanner": "Die Firmware deines Sortierers meldet keine Version und kann nicht zum Scannen verwendet werden. Lade die neueste firmware/main/main.ino erneut hoch, um das Scannen zu aktivieren.",
     "update": {
@@ -92,6 +101,10 @@
       "description": "Karte an Modul {{module}} blockiert. Überprüfe den Sortierer und setze fort.",
       "descriptionWithBin": "Karte an Modul {{module}} blockiert (unterwegs zu Fach {{bin}}). Überprüfe den Sortierer und setze fort."
     },
+    "noCardDetected": {
+      "title": "Keine Karte erkannt",
+      "description": "Der Sensor von Modul 1 erkennt keine Karte - führe eine zu, bevor du scannst."
+    },
     "feedFailed": {
       "title": "Zufuhr fehlgeschlagen",
       "description": "Zuführbefehl konnte nicht gesendet werden."
@@ -162,6 +175,7 @@
     "heading": "Debug",
     "simulateScan": "Scan simulieren",
     "simulateMultiMatch": "Mehrfachtreffer simulieren",
+    "simulateNoMatch": "Nicht erkannte Karte simulieren",
     "forceError": "Fehler erzwingen"
   },
   "scannerMenu": {
@@ -171,13 +185,22 @@
     "zoom": "Zoom",
     "disconnect": "Trennen",
     "connect": "Verbinden",
+    "connectUsb": "Über USB verbinden",
+    "connectBluetooth": "Über Bluetooth verbinden",
     "scanner": "Scanner",
     "autoFeed": "Automatische Zufuhr",
     "allowDuplicates": "Duplikate zulassen",
     "calibrate": "Kalibrieren",
     "retryConnection": "Verbindung erneut versuchen",
     "usePhoneAsCamera": "Telefon als Kamera verwenden",
-    "phoneCameraConnected": "Telefonkamera verbunden"
+    "phoneCameraConnected": "Telefonkamera verbunden",
+    "ocrTextMatching": "OCR-Texterkennung"
+  },
+  "ocrBetaDialog": {
+    "title": "OCR-Texterkennung (Beta)",
+    "description": "Liest den Set-Code und die Sammelkartennummer auf dem gescannten Kartenbild, um die richtige Druckversion zu bestimmen. Diese Funktion befindet sich noch in der Beta-Phase und kann gelegentlich zusätzlichen Text auf der Karte erfassen oder falsch erkennen. Deaktiviere sie wieder, falls sie die Treffer verschlechtert.",
+    "confirm": "OCR aktivieren",
+    "cancel": "Abbrechen"
   },
   "phoneCamera": {
     "dialogTitle": "Telefon als Kamera verwenden",
@@ -203,6 +226,7 @@
   "scannerOverlay": {
     "apiDown": "{{api}} ist derzeit nicht erreichbar - das Scannen ist für diese Sammlung deaktiviert, bis der Dienst wieder verfügbar ist. Prüfe die Statusseite für Updates.",
     "dailyLimitReached": "Tägliches Scan-Limit erreicht. Upgrade auf Business für unbegrenztes Scannen.",
+    "upgradeButton": "Plan upgraden",
     "connectCamera": "Verbinde eine Kamera, um mit dem Scannen zu beginnen.",
     "waitingForPhone": "Warte auf ein Telefon, das als Kamera gekoppelt wird - zeige den QR-Code über das Kameramenü an.",
     "phoneReadyNoPhoto": "Telefonkamera bereit. Sie macht ein Foto, sobald eine Karte ankommt.",
@@ -222,6 +246,12 @@
   },
   "sessionErrorsPanel": {
     "heading": "Fehler"
+  },
+  "unmatchedCardsPanel": {
+    "heading_one": "{{count}} nicht erkannte Karte",
+    "heading_other": "{{count}} nicht erkannte Karten",
+    "imageAlt": "Nicht erkannte Karte",
+    "noImage": "Kein Bild aufgenommen"
   },
   "sessionStatsPanel": {
     "totalCards": "Karten gesamt",
@@ -255,6 +285,9 @@
     "sessionReleased": "Sitzung freigegeben",
     "releaseFailed": "Sitzung konnte nicht freigegeben werden",
     "leaveSession": "Sitzung verlassen",
+    "searchPlaceholder": "Sitzungen durchsuchen...",
+    "noSearchResultsTitle": "Keine passenden Sitzungen",
+    "noSearchResultsDescription": "Versuche einen anderen Suchbegriff",
     "title": "Sitzungsüberwachung",
     "subtitle": "Einer laufenden Scan-Sitzung beitreten",
     "noSessionsFound": "Keine Sitzungen gefunden",
@@ -262,5 +295,10 @@
     "cardCount_one": "{{count}} Karte",
     "cardCount_other": "{{count}} Karten",
     "isScanningTooltip": "{{name}} scannt gerade"
+  },
+  "binLimitDialog": {
+    "title": "Fach {{number}} ist voll",
+    "description": "Fach {{number}} hat sein Limit von {{limit}} Karten erreicht. Entferne die Karten aus dem Fach und setze das Scannen dann fort.",
+    "continueButton": "Ich habe das Fach geleert, weiter"
   }
 }

@@ -1,5 +1,5 @@
+import { BrandIcon } from "@/components/brand-icon";
 import { cn } from "@/lib/utils";
-import { IconPigFilled } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 
 function ScanningCard() {
@@ -22,10 +22,6 @@ function ScanningCard() {
   );
 }
 
-// The one loading screen for the whole app - AppLoadingGate uses it while
-// org/collection data loads, and it's also the Suspense fallback for lazy
-// route chunks (see RouteLoadingFallback), so every full-page loading state
-// looks the same instead of a plain spinner in some places and this in others.
 export function AppLoadingScreen({
   className,
   onTransitionEnd,
@@ -44,10 +40,10 @@ export function AppLoadingScreen({
     >
       <div className="flex flex-col items-center gap-2 relative">
         <span className="mb-1 grid size-9 shrink-0 place-items-center rounded-lg border border-border bg-foreground/4 text-foreground">
-          <IconPigFilled className="size-4.5" />
+          <BrandIcon className="size-7" />
         </span>
         <ScanningCard />
-        <span className="text-sm text-muted-foreground font-bold">
+        <span className="text-sm text-muted-foreground font-bold sr-only">
           {t("loadingGate.loadingVault")}
         </span>
       </div>

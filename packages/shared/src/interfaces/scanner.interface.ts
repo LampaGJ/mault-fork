@@ -48,7 +48,7 @@ export interface CardScannerProps {
     matches: PlayingCardWithDistance[],
     capturedImageUrl?: string,
   ) => void;
-  onNoMatch?: () => void;
+  onNoMatch?: (capturedImageUrl?: string) => void;
   onManualAdd?: () => void;
   onError?: (error: string) => void;
   className?: string;
@@ -69,5 +69,13 @@ export interface ScannedCard {
   capturedImageUrl?: string;
   alternativeMatches?: PlayingCardWithDistance[];
   isFoil?: boolean;
+  foilType?: string;
   isDownloaded?: boolean;
+  corrected?: boolean;
+}
+
+export interface UnmatchedCard {
+  scanId: string;
+  capturedImageUrl?: string;
+  scannedAt: number;
 }

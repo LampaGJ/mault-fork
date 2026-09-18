@@ -1,10 +1,11 @@
 {
   "name": "@magic-vault/server",
-  "version": "1.0.37",
+  "version": "1.0.65",
   "private": true,
   "scripts": {
     "dev": "tsx watch --env-file ../../.env src/index.ts",
     "build": "tsup",
+    "test": "tsx --test tests/*.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
@@ -12,6 +13,8 @@
     "db:migrate-local": "tsx scripts/migrate-local.ts",
     "backfill:card-shape": "tsx --env-file ../../.env scripts/backfill-card-shape.ts",
     "backfill:game-vector-indexes": "tsx --env-file ../../.env scripts/backfill-game-vector-indexes.ts",
+    "backfill:devices": "tsx --env-file ../../.env scripts/backfill-devices.ts",
+    "backfill:missing-devices": "tsx --env-file ../../.env scripts/backfill-missing-devices.ts",
     "bootstrap:swu": "tsx --env-file ../../.env scripts/bootstrap-swu.ts"
   },
   "dependencies": {
@@ -27,7 +30,9 @@
     "pg": "^8.16.3",
     "pg-copy-streams": "^7.0.0",
     "resend": "^6.24.0",
+    "rollbar": "^3.1.0",
     "stripe": "^22.6.1",
+    "tesseract.js": "^7.0.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {

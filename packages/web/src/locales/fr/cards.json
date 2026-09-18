@@ -10,6 +10,7 @@
     "capturedScan": "Scan capturé",
     "matchedCard": "Carte correspondante",
     "foil": "Foil",
+    "foilNone": "Non foil",
     "regularPrice": "Normale : {{price}}",
     "foilPrice": "Foil : {{price}}",
     "correctCard": "Carte correcte",
@@ -33,6 +34,7 @@
   "cardFilterPopover": {
     "color": "Couleur",
     "rarity": "Rareté",
+    "foilType": "Type de foil",
     "bin": "Bac",
     "unassigned": "Non assigné",
     "minMatch": "Correspondance min.",
@@ -56,6 +58,8 @@
     "startTooltip": "Alimenter la première carte et démarrer le scan",
     "autoFeedOnTooltip": "Alimentation auto activée — la prochaine carte est alimentée automatiquement après chaque scan",
     "autoFeedOffTooltip": "Alimentation auto désactivée — alimenter chaque carte manuellement",
+    "foilNone": "Non foil",
+    "foilGeneric": "Foil",
     "clearDeviceTooltip": "Vider l'appareil (ouvre toutes les trappes inférieures)",
     "noCardsMatchFilters": "Aucune carte ne correspond aux filtres actuels",
     "tryAdjusting": "Essaie d'ajuster ta recherche, ton tri ou tes filtres",
@@ -99,6 +103,8 @@
     "sortDescDefault": "Décroissant",
     "deselectAll": "Tout désélectionner",
     "selectAll": "Tout sélectionner",
+    "gridView": "Vue grille",
+    "listView": "Vue liste",
     "sessionSummaryExport": "Résumé de session et export",
     "deleteScannedCardsTitle": "Supprimer les cartes scannées",
     "deleteScannedCardsDescription": "Cela supprimera définitivement toutes les cartes de ta collection. Cette action est irréversible.",
@@ -109,6 +115,7 @@
   },
   "scannedCardItem": {
     "multipleMatchesTooltip": "Plusieurs correspondances proches - appuie pour vérifier",
+    "multipleMatchesResolvedTooltip": "Plusieurs correspondances proches - vérifié et corrigé",
     "foil": "Foil",
     "matchTooltip": "À quel point l'image scannée correspond à cette carte, basé sur une recherche de similarité visuelle",
     "bin": "Bac {{number}}",
@@ -126,7 +133,53 @@
     "byRarity": "Par rareté",
     "topSets": "Meilleurs sets",
     "includePreviouslyDownloaded": "Inclure celles déjà téléchargées",
+    "applyGridFilters": "Appliquer les filtres actifs ({{count}})",
     "close": "Fermer",
-    "download": "Télécharger ({{count}})"
+    "download": "Télécharger ({{count}})",
+    "sessionWrappedToggle": "Wrapped"
+  },
+  "sessionWrapped": {
+    "srTitle": "Le récap de {{collectionName}}",
+    "srDescription": "Le récapitulatif de ta session de scan.",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "skipAll": "Tout passer",
+    "intro": {
+      "eyebrow": "Ta session",
+      "title": "Le récap de {{collectionName}}",
+      "subtitle": "Touche l'écran ou utilise les flèches pour voir ton récap"
+    },
+    "total": {
+      "title": "cartes triées"
+    },
+    "unique": {
+      "title": "cartes uniques",
+      "subtitle": "{{percent}}% de ton lot était inédit"
+    },
+    "set": {
+      "eyebrow": "Ton set favori",
+      "subtitle": "{{count}} cartes"
+    },
+    "rarity": {
+      "eyebrow": "Ta répartition de raretés"
+    },
+    "color": {
+      "eyebrow": "Ta couleur dominante",
+      "subtitle": "{{count}} sur {{total}} cartes"
+    },
+    "mvp": {
+      "eyebrow": "Ta carte MVP"
+    },
+    "value": {
+      "eyebrow": "Valeur totale",
+      "avgLabel": "Moyenne par carte :"
+    },
+    "speed": {
+      "eyebrow": "Ton rythme",
+      "unit": "cartes / heure",
+      "fast": "Ultra rapide",
+      "medium": "Bon rythme",
+      "slow": "Lent et minutieux"
+    }
   }
 }

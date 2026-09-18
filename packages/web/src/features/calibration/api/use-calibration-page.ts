@@ -1,37 +1,64 @@
+import { binRoutesQueryOptions, saveBinRoute } from "@/features/calibration/api/bin-routes";
+import { devicesQueryOptions, saveDevice } from "@/features/calibration/api/devices";
 import { modulesQueryOptions } from "@/features/calibration/api/module-configs";
 import { useBinRoutes } from "@/features/calibration/api/use-bin-routes";
+import { useChannelLayout } from "@/features/calibration/api/use-channel-layout";
+import { useDevice } from "@/features/calibration/api/use-device";
 import { useModuleCount } from "@/features/calibration/api/use-module-count";
 import { useOrg } from "@/features/companies/api/use-organization";
 import { useFeederConfig } from "@/features/calibration/api/use-feeder-config";
 import { useModuleConfigs } from "@/features/calibration/api/use-module-configs";
 import {
+  buildCalibrationDebugText,
+  defaultPaddleCloseDelayValues,
   defaultSliderValues,
   getCalibrationKey,
 } from "@/features/calibration/lib/calibration-utils";
-import type { ActivePositions, SliderKey } from "@/features/calibration/types";
+import {
+  buildCalibrationExport,
+  downloadCalibrationExport,
+  parseCalibrationExport,
+} from "@/features/calibration/lib/calibration-export";
+import type { ActivePositions, SliderKey } from "@/lib/interfaces/calibration";
 import { useSerial } from "@/features/scanner/api/use-serial";
+import {
+  CALIBRATION_PREVIEW_DEBOUNCE_MS,
+  CALIBRATION_STEP_SETTLE_MS,
+} from "@/lib/constants/timing";
 import {
   computeBinCount,
   DEFAULT_CALIBRATION,
   type BinRoute,
   type ServoCalibration,
 } from "@magic-vault/shared";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 export function useCalibrationPage() {
   const { t } = useTranslation("calibration");
-  const { isConnected, connect, disconnect, sendCommand, sendRoute, sendTest, receiveResponse } =
-    useSerial();
+  const {
+    isConnected,
+    connect,
+    disconnect,
+    sendCommand,
+    sendRoute,
+    sendTest,
+    receiveResponse,
+    firmwareVersion,
+    board,
+  } = useSerial();
   const { configs, saveConfig, moveServo } = useModuleConfigs();
   const { feederConfig, saveConfig: saveFeeder, previewSpeed } = useFeederConfig();
   const { activeOrg } = useOrg();
-  const { isLoading } = useQuery({ ...modulesQueryOptions, enabled: !!activeOrg });
+  const device = useDevice();
+  const queryClient = useQueryClient();
+  const { isLoading } = useQuery(modulesQueryOptions(device?.guid));
   const moduleCount = useModuleCount();
   const modules = Array.from({ length: moduleCount }, (_, i) => i + 1);
   const { routes: binRoutes } = useBinRoutes();
+  const channelLayout = useChannelLayout();
 
   const resolveRoute = useCallback(
     (binNumber: number): BinRoute =>
@@ -61,6 +88,10 @@ export function useCalibrationPage() {
   const [sliderValues, setSliderValues] = useState<Record<SliderKey, number>>(
     () => defaultSliderValues(modules),
   );
+
+  const [paddleCloseDelayValues, setPaddleCloseDelayValues] = useState<
+    Record<number, number>
+  >(() => defaultPaddleCloseDelayValues(modules));
 
   const servoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -122,7 +153,10 @@ export function useCalibrationPage() {
     (module: number, servo: "bottom" | "paddle" | "pusher", value: number) => {
       setSliderValues((prev) => ({ ...prev, [`${module}:${servo}`]: value }));
       if (servoDebounceRef.current) clearTimeout(servoDebounceRef.current);
-      servoDebounceRef.current = setTimeout(() => moveServo(module, servo, value), 30);
+      servoDebounceRef.current = setTimeout(
+        () => moveServo(module, servo, value),
+        CALIBRATION_PREVIEW_DEBOUNCE_MS,
+      );
     },
     [moveServo],
   );
@@ -189,7 +223,7 @@ export function useCalibrationPage() {
           return;
         }
         // Brief pause between cards so the mechanism fully resets
-        await new Promise<void>((r) => setTimeout(r, 500));
+        await new Promise<void>((r) => setTimeout(r, CALIBRATION_STEP_SETTLE_MS));
       }
       toast.success(t("useCalibrationPage.toasts.sampleRunComplete"));
     } finally {
@@ -207,11 +241,21 @@ export function useCalibrationPage() {
     [saveConfig],
   );
 
+  const handlePaddleCloseDelayChange = useCallback(
+    (module: number, value: number) => {
+      setPaddleCloseDelayValues((prev) => ({ ...prev, [module]: value }));
+    },
+    [],
+  );
+
   const handleFeederSpeedChange = useCallback(
     (value: number) => {
       setFeederSpeedValue(value);
       if (feederDebounceRef.current) clearTimeout(feederDebounceRef.current);
-      feederDebounceRef.current = setTimeout(() => previewSpeed(value), 30);
+      feederDebounceRef.current = setTimeout(
+        () => previewSpeed(value),
+        CALIBRATION_PREVIEW_DEBOUNCE_MS,
+      );
     },
     [previewSpeed],
   );
@@ -243,6 +287,11 @@ export function useCalibrationPage() {
   const handleFeederSetPulseDuration = useCallback(() => {
     saveFeeder({ ...feederConfig, pulseDuration: feederPulseDurationValue });
   }, [feederConfig, feederPulseDurationValue, saveFeeder]);
+
+  const handleFeederSetContinuous = useCallback(() => {
+    setFeederPulseDurationValue(0);
+    saveFeeder({ ...feederConfig, pulseDuration: 0 });
+  }, [feederConfig, saveFeeder]);
 
   const handleFeederSetPauseDuration = useCallback(() => {
     saveFeeder({ ...feederConfig, pauseDuration: feederPauseDurationValue });
@@ -277,6 +326,86 @@ export function useCalibrationPage() {
     setIrMonitoring((prev) => !prev);
   }, []);
 
+  const handleCopyCalibration = useCallback(async () => {
+    const text = buildCalibrationDebugText({
+      channelLayout,
+      moduleCount,
+      configs,
+      feederConfig,
+      binRoutes,
+      firmwareVersion,
+      board,
+    });
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(t("useCalibrationPage.toasts.calibrationCopied"));
+    } catch {
+      toast.error(t("useCalibrationPage.toasts.copyFailed"));
+    }
+  }, [channelLayout, moduleCount, configs, feederConfig, binRoutes, firmwareVersion, board, t]);
+
+  const handleExportConfig = useCallback(() => {
+    downloadCalibrationExport(
+      buildCalibrationExport({
+        channelLayout,
+        moduleCount,
+        configs,
+        feederConfig,
+        binRoutes,
+      }),
+    );
+  }, [channelLayout, moduleCount, configs, feederConfig, binRoutes]);
+
+  const [isImporting, setIsImporting] = useState(false);
+
+  const handleImportConfig = useCallback(
+    async (file: File) => {
+      let parsed;
+      try {
+        parsed = parseCalibrationExport(await file.text());
+      } catch {
+        toast.error(t("useCalibrationPage.toasts.importInvalid"));
+        return;
+      }
+
+      if (!device) {
+        toast.error(t("useCalibrationPage.toasts.importFailed"));
+        return;
+      }
+
+      setIsImporting(true);
+      try {
+        await saveDevice(device.guid, {
+          moduleCount: parsed.moduleCount,
+          channelLayout: parsed.channelLayout,
+        });
+        await queryClient.invalidateQueries({
+          queryKey: devicesQueryOptions(activeOrg?.id).queryKey,
+        });
+
+        for (const m of parsed.modules) {
+          await saveConfig(m.moduleNumber, m.calibration);
+        }
+
+        await saveFeeder(parsed.feeder);
+
+        for (const route of parsed.binRoutes) {
+          await saveBinRoute(device.guid, route);
+        }
+        await queryClient.invalidateQueries({
+          queryKey: binRoutesQueryOptions(device.guid).queryKey,
+        });
+
+        toast.success(t("useCalibrationPage.toasts.importSuccess"));
+      } catch {
+        toast.error(t("useCalibrationPage.toasts.importFailed"));
+      } finally {
+        setIsImporting(false);
+      }
+    },
+    [activeOrg?.id, device, queryClient, saveConfig, saveFeeder, t],
+  );
+
   useEffect(() => {
     if (!irMonitoring || !isConnected) return;
     const id = setInterval(() => {
@@ -302,11 +431,13 @@ export function useCalibrationPage() {
     isLoading,
     active,
     sliderValues,
+    paddleCloseDelayValues,
     activeBin,
     isTesting,
     isUnconfigured,
     handleControl,
     handleSliderChange,
+    handlePaddleCloseDelayChange,
     handleTest,
     handleTestBin,
     handleSetPosition,
@@ -324,6 +455,7 @@ export function useCalibrationPage() {
     handleFeederSetSpeed,
     handleFeederSetDuration,
     handleFeederSetPulseDuration,
+    handleFeederSetContinuous,
     handleFeederSetPauseDuration,
     handleFeederSetSettleDuration,
     handleFeed,
@@ -334,5 +466,9 @@ export function useCalibrationPage() {
     irMonitoring,
     handleReadIR: readIR,
     handleToggleIrMonitor,
+    handleCopyCalibration,
+    handleExportConfig,
+    handleImportConfig,
+    isImporting,
   };
 }

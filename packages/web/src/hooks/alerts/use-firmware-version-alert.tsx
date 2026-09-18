@@ -1,9 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { useSerial } from "@/features/scanner/api/use-serial";
 import { Esp32FlashDialog } from "@/features/scanner/components/esp32-flash-dialog";
-import type { AppAlert } from "@/lib/alerts";
-import { LATEST_FIRMWARE_VERSION } from "@/lib/firmware-version";
-import { FIRMWARE_RELEASES_URL } from "@/lib/links";
+import type { AppAlert } from "@/lib/interfaces/alerts";
+import { LATEST_FIRMWARE_VERSION } from "@/lib/constants/firmware";
+import { FIRMWARE_RELEASES_URL } from "@/lib/constants/links";
 import { isFirmwareVersionOutdated } from "@magic-vault/shared";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import { useState, type ReactNode } from "react";
@@ -14,13 +14,14 @@ export function useFirmwareVersionAlert(): {
   portal: ReactNode;
 } {
   const { t } = useTranslation("scanner");
-  const { isConnected, firmwareVersion, board, isFlashing } = useSerial();
+  const { isConnected, firmwareVersion, board, transport, isFlashing } =
+    useSerial();
   const [flashDialogOpen, setFlashDialogOpen] = useState(false);
 
   const showAlert =
     isConnected &&
     isFirmwareVersionOutdated(firmwareVersion, LATEST_FIRMWARE_VERSION);
-  const isEsp32 = board === "esp32" || isFlashing;
+  const isEsp32 = (board === "esp32" && transport === "serial") || isFlashing;
 
   const portal = (
     <Esp32FlashDialog

@@ -1,13 +1,14 @@
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { PrimaryColorPicker } from "@/components/primary-color-picker";
 import { ScannerLayoutToggle } from "@/components/scanner-layout-toggle";
+import { SessionWrappedToggle } from "@/components/session-wrapped-toggle";
 import { BillingSettings } from "@/features/billing/components/billing-settings";
+import { useDiscordBotSettings } from "@/features/companies/api/use-discord-bot";
 import { useOrg } from "@/features/companies/api/use-organization";
 import { DiscordBotSettings } from "@/features/companies/components/discord-bot-settings";
 import { LocalAuditLog } from "@/features/companies/components/local-audit-log";
 import { LocalOrgInvites } from "@/features/companies/components/local-org-invites";
 import { OrgSettings } from "@/features/companies/components/org-settings";
-import { GameCoverageList } from "@/features/games/components/game-coverage-list";
 import { DiscordNotificationSettings } from "@/features/notifications/components/discord-notification-settings";
 import { AUTH_PROVIDER } from "@/lib/auth/provider";
 import { useQueryClient } from "@tanstack/react-query";
@@ -18,11 +19,11 @@ import { toast } from "sonner";
 
 export default function SettingsPage() {
   const { t } = useTranslation("settings");
-  const { t: tGames } = useTranslation("games");
   const { t: tBilling } = useTranslation("billing");
   const { activeOrg } = useOrg();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { isLinked: isDiscordLinked } = useDiscordBotSettings();
 
   useEffect(() => {
     const billingResult = searchParams.get("billing");
@@ -111,22 +112,20 @@ export default function SettingsPage() {
         <div className="rounded-lg border p-4 flex flex-col gap-4">
           <div>
             <h2 className="text-sm font-semibold font-heading">
-              {tGames("gameCoverage.heading")}
+              {t("sessionWrapped.heading")}
             </h2>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {tGames("gameCoverage.description")}
+              {t("sessionWrapped.description")}
             </p>
           </div>
-          <GameCoverageList />
+          <label className="flex items-center justify-between gap-3">
+            <span className="text-sm">{t("sessionWrapped.toggleLabel")}</span>
+            <SessionWrappedToggle />
+          </label>
         </div>
         <div className="rounded-lg border p-4 flex flex-col gap-4">
           <DiscordBotSettings />
-        </div>
-        <div className="rounded-lg border p-4 flex flex-col gap-4">
-          <h2 className="text-sm font-semibold font-heading">
-            {t("notifications.heading")}
-          </h2>
-          <DiscordNotificationSettings />
+          {isDiscordLinked && <DiscordNotificationSettings />}
         </div>
       </div>
     </div>

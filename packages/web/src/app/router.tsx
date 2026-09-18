@@ -1,28 +1,31 @@
+import AuthGuard from "@/app/routes/auth-guard";
 import ErrorPage from "@/app/routes/error";
 import NotFoundPage from "@/app/routes/not-found";
 import { RequireCollectionDialog } from "@/components/require-collection-dialog";
+import { RouteLoadingFallback } from "@/components/route-loading-fallback";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useRole } from "@/hooks/use-role";
 import { AUTH_PROVIDER } from "@/lib/auth/provider";
-import { lazy } from "react";
+import { lazy, Suspense } from "react";
 import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
-
-const AuthGuard = lazy(() => import("@/app/routes/auth-guard"));
 
 const LandingPage = lazy(() => import("@/app/routes/index"));
 const BuildGuidePage = lazy(() => import("@/app/routes/build"));
 const DiscordBotPage = lazy(() => import("@/app/routes/discord-bot"));
 const PrivacyPolicyPage = lazy(() => import("@/app/routes/privacy"));
 const TermsOfServicePage = lazy(() => import("@/app/routes/terms"));
-const AuthPage = lazy(() => import("@/app/routes/auth"));
-const AuthJoinPage = lazy(() => import("@/app/routes/auth-join"));
+const AuthPage = lazy(() => import("@/app/routes/neon/auth"));
+const AuthLocalPage = lazy(() => import("@/app/routes/local/auth"));
+const AuthJoinPage = lazy(() => import("@/app/routes/local/join"));
 const AuthForgotPasswordPage = lazy(
-  () => import("@/app/routes/auth-forgot-password"),
+  () => import("@/app/routes/local/forgot-password"),
 );
 const AuthResetPasswordPage = lazy(
-  () => import("@/app/routes/auth-reset-password"),
+  () => import("@/app/routes/local/reset-password"),
 );
-const VerifyEmailPage = lazy(() => import("@/app/routes/app/verify-email"));
+const VerifyEmailPage = lazy(
+  () => import("@/app/routes/app/neon/verify-email"),
+);
 const AppLayout = lazy(() => import("@/app/routes/app/layout"));
 const ScannerPage = lazy(() => import("@/app/routes/app/index"));
 const CollectionsPage = lazy(() => import("@/app/routes/app/collections"));
@@ -87,15 +90,35 @@ export const router = createBrowserRouter([
       },
       {
         path: "/auth/:path",
-        element: <AuthPage />,
+        element: AUTH_PROVIDER === "local" ? <AuthLocalPage /> : <AuthPage />,
       },
-      { path: "/auth/forgot-password", element: <AuthForgotPasswordPage /> },
-      { path: "/auth/reset-password", element: <AuthResetPasswordPage /> },
+      // Local-mode only - Neon's prebuilt <AuthView> already covers
+      // invites/password reset. React Router ranks static segments above
+      // dynamic ones regardless of array order, so these still take
+      // priority over /auth/:path above.
       ...(AUTH_PROVIDER === "local"
-        ? [{ path: "/auth/join", element: <AuthJoinPage /> }]
+        ? [
+            { path: "/auth/join", element: <AuthJoinPage /> },
+            {
+              path: "/auth/forgot-password",
+              element: <AuthForgotPasswordPage />,
+            },
+            {
+              path: "/auth/reset-password",
+              element: <AuthResetPasswordPage />,
+            },
+          ]
         : []),
       {
-        element: <AuthGuard />,
+        // Scopes the branded "Loading your vault" screen to the /app/*
+        // portion only - the outer Suspense in main.tsx has no fallback so
+        // the public marketing pages don't flash it while their own chunk
+        // loads.
+        element: (
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <AuthGuard />
+          </Suspense>
+        ),
         children: [
           {
             path: "/app/verify-email",

@@ -47,10 +47,52 @@ a serial connection to the device can drive it by following this spec
   - the app uses it to decide whether the device can be reflashed from the
   browser (ESP32 only) or needs a link to the GitHub repo instead.
 - One other message is **unsolicited** and can arrive at any time
-  between command/response pairs: `{"error":"jam","module":1}`, pushed
-  if module 1's IR sensor sees a card continuously for 20 seconds
+  between command/response pairs: `{"error":"jam","module":N}`, pushed
+  if module *N*'s IR sensor sees a card continuously for 20 seconds
   outside of an active `route`. A client should watch for this
-  independently of whatever response it's waiting on.
+  independently of whatever response it's waiting on. This check is
+  purely informational - it doesn't move any servos, since nothing is
+  actively trying to sort that card. Paddle-flap recovery only happens
+  inline during an active `route`, on a card that fails to advance to
+  the next module in time (see `route` below).
+
+## BLE transport
+
+ESP32-S3 and Uno R4 WiFi builds also advertise a BLE peripheral, so a client
+can drive the device wirelessly instead of over USB - Uno R4 Minima has no
+BLE hardware and is Serial-only. This carries the **exact same** line-
+delimited JSON protocol documented below; only how bytes get to/from the
+device differs. `main.ino`'s two backends (`ble_arduinoble.ino` for the Uno
+R4 WiFi, `ble_esp32.ino` for the ESP32-S3) implement this identically from a
+protocol standpoint.
+
+- **Service:** the well-known Nordic UART Service (NUS) UUIDs, reused rather
+  than inventing custom ones so generic BLE terminal apps (nRF Connect, etc.)
+  can talk to the device for debugging without any app-specific tooling.
+  - Service: `6E400001-B5A3-F393-E0A9-E50E24DCCA9E`
+  - RX characteristic (write / write-without-response — commands in):
+    `6E400002-B5A3-F393-E0A9-E50E24DCCA9E`
+  - TX characteristic (notify — responses and unsolicited messages out):
+    `6E400003-B5A3-F393-E0A9-E50E24DCCA9E`
+- **Framing:** identical to Serial — one JSON object per line, `\n`-
+  terminated. A single command or response line is **not** guaranteed to
+  arrive in one BLE write/notify packet: both directions get chunked to the
+  connection's negotiated MTU (the device chunks conservatively at 20 bytes
+  unless testing shows a given board/central negotiates higher), so a client
+  must reassemble by simply appending received bytes to a buffer and
+  splitting on `\n`, exactly as it already does for Serial's byte stream.
+- **Response routing:** a command's response is sent back only on the
+  transport it arrived on — if both Serial and BLE are connected at once,
+  each keeps its own independent request/response correlation (the protocol
+  has no request IDs, so a client must still send one command and read one
+  response before sending the next — see Transport above). The boot banner
+  and the unsolicited `{"error":"jam",...}` message are the exception: they
+  broadcast to every currently-connected transport, not just one.
+- **Reliability:** BLE notifications aren't guaranteed delivery. A dropped
+  chunk mid-line corrupts that one response; a client's existing timeout-
+  based recovery (waiting for a response line, per the framing note above)
+  handles this as a failed/garbled response, but there's no automatic retry
+  of the specific request. This matches how generic BLE UART bridges behave.
 
 ## Hardware model
 
@@ -164,14 +206,18 @@ or, to bypass calibrated positions and drive a raw pulse directly:
     "module": 1,
     "bottomClosed": 400, "bottomOpen": 150,
     "paddleClosed": 420, "paddleOpen": 150,
-    "pusherLeft": 150, "pusherNeutral": 230, "pusherRight": 300
+    "pusherLeft": 150, "pusherNeutral": 230, "pusherRight": 300,
+    "paddleCloseDelay": 150
   }
 }
 ```
 Every field except `module` is optional — omitted fields keep their
-current stored value. These are raw PWM pulse values (same `120–490`
-range as `servo`'s `value`), one pair/triple per servo defining its two
-or three named positions. → `{"status":"ok","module":1}`
+current stored value. `bottomClosed`/`bottomOpen`/`paddleClosed`/`paddleOpen`/
+`pusherLeft`/`pusherNeutral`/`pusherRight` are raw PWM pulse values (same
+`120–490` range as `servo`'s `value`), one pair/triple per servo defining
+its two or three named positions. `paddleCloseDelay` is different: it's a
+duration in milliseconds, not a pulse - see `route` below for how it's
+used. → `{"status":"ok","module":1}`
 
 ### `feeder`
 ```json
@@ -237,10 +283,21 @@ is present. `hopper` is `true` while cards remain in the feeder stack.
 - `direction`: `"left" | "right" | "bottom"`
 - Runs the feeder first, then routes the card: opens each preceding
   module's bottom in turn to advance the card (confirming arrival via
-  that module's IR sensor, 3s timeout each step), then either opens the
-  target module's paddle and drives its pusher in the requested
-  direction (`"left"`/`"right"`), or opens just the target module's own
-  bottom to drop the card there (`"bottom"`).
+  that module's IR sensor, 3s timeout each step - if a step times out,
+  flaps that module's paddle once, the same recovery `jam` handling uses,
+  then gives the card one more 3s window before reporting failure), then
+  either opens the target module's paddle and drives its pusher in the
+  requested direction (`"left"`/`"right"`), or opens just the target
+  module's own bottom to drop the card there (`"bottom"`).
+- For a `"left"`/`"right"` push, two timings run independently once the
+  pusher fires: the pusher itself always returns to neutral after a fixed
+  internal hold (long enough to complete its stroke and fling the card,
+  short enough not to stall against the mechanical stop for long); the
+  target module's paddle instead closes `paddleCloseDelay` ms after the
+  pusher fired (per-module, via `setConfig`) - independent of the pusher's
+  own timing, so the paddle can be tuned to stay open longer than the
+  pusher is held, to make sure the card has actually cleared before the
+  gate closes.
 - A card destined for a module's bottom output doesn't need to be the
   last module — any module can be targeted with `direction: "bottom"`.
 
@@ -256,8 +313,8 @@ is present. `hopper` is `true` while cards remain in the feeder stack.
 | `{"error":"direction must be left, right, or bottom"}` | invalid `direction` in `route` |
 | `{"error":"empty: feeder hopper is out of cards","empty":true}` | feed attempted with no cards in the hopper |
 | `{"error":"timeout: feeder did not deliver card to module 1","empty":false}` | feeder ran its full configured `duration` without module 1's IR triggering |
-| `{"error":"timeout: no card detected at module N"}` | during routing, a card didn't advance to module *N* in time (3s) |
+| `{"error":"timeout: no card detected at module N"}` | during routing, a card didn't advance to module *N* in time (3s, plus one paddle-flap retry and another 3s) |
 | `{"error":"invalid JSON","reason":"...","length":N,"received":"..."}` | line didn't parse as JSON |
 | `{"error":"command too long"}` | line exceeded 200 characters |
 | `{"error":"unknown command"}` | valid JSON, but no recognized top-level key |
-| `{"error":"jam","module":1}` | **unsolicited** — module 1's IR saw a card continuously for 20s with no route in progress |
+| `{"error":"jam","module":N}` | **unsolicited** — module *N*'s IR saw a card continuously for 20s with no route in progress (informational only - no paddle-flap is attempted since nothing is actively sorting) |

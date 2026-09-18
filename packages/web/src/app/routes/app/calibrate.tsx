@@ -14,29 +14,34 @@ import {
   type ModuleConfigAuditEntry,
 } from "@/features/calibration/api/module-configs";
 import { useCalibrationPage } from "@/features/calibration/api/use-calibration-page";
+import { useDevice } from "@/features/calibration/api/use-device";
 import { BinRoutingAssignment } from "@/features/calibration/components/bin-routing-assignment";
 import { BinRoutingControls } from "@/features/calibration/components/bin-routing-controls";
+import { CalibrationTour } from "@/features/calibration/components/calibration-tour";
 import { ChannelLayoutToggle } from "@/features/calibration/components/channel-layout-toggle";
 import { FeederCalibrationPanel } from "@/features/calibration/components/feeder-calibration-panel";
 import { IrSensorPanel } from "@/features/calibration/components/ir-sensor-panel";
 import { ModuleCalibrationGrid } from "@/features/calibration/components/module-calibration-grid";
 import { ModuleCountStepper } from "@/features/calibration/components/module-count-stepper";
 import { ScanRegionCalibrationPanel } from "@/features/calibration/components/scan-region-calibration-panel";
+import type { CalibrationSection } from "@/lib/interfaces/calibration";
 import { cn } from "@/lib/utils";
 import {
   IconAdjustmentsHorizontal,
+  IconClipboard,
   IconClockHour3,
   IconDeviceUsb,
   IconDeviceUsbFilled,
+  IconDownload,
   IconFocus2,
+  IconLoader2,
   IconSettingsCog,
+  IconUpload,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-
-type CalibrationSection = "modules" | "scanRegion" | "calibration";
 
 function ModuleHistoryBody({ entry }: { entry: ModuleConfigAuditEntry }) {
   const { t } = useTranslation("calibration");
@@ -65,6 +70,14 @@ function ModuleHistoryBody({ entry }: { entry: ModuleConfigAuditEntry }) {
         </span>
         <span>
           {c.pusherLeft} / {c.pusherNeutral} / {c.pusherRight}
+        </span>
+      </div>
+      <div className="flex gap-2">
+        <span className="w-16 shrink-0 text-muted-foreground">
+          {t("calibratePage.moduleHistory.paddleCloseDelay")}
+        </span>
+        <span>
+          {t("calibratePage.moduleHistory.msValue", { value: c.paddleCloseDelay })}
         </span>
       </div>
     </div>
@@ -115,6 +128,7 @@ function FeederHistoryBody({ entry }: { entry: FeederConfigAuditEntry }) {
 export default function CalibratePage() {
   const { t } = useTranslation("calibration");
   const queryClient = useQueryClient();
+  const device = useDevice();
   const [moduleHistoryOpen, setModuleHistoryOpen] = useState(false);
   const [feederHistoryOpen, setFeederHistoryOpen] = useState(false);
   const [section, setSection] = useState<CalibrationSection>("modules");
@@ -143,25 +157,28 @@ export default function CalibratePage() {
 
   const { data: moduleHistoryResult, isLoading: moduleHistoryLoading } =
     useQuery({
-      queryKey: ["modules", "history"],
-      queryFn: getModuleHistory,
-      enabled: moduleHistoryOpen,
+      queryKey: ["modules", "history", device?.guid],
+      queryFn: () => getModuleHistory(device!.guid),
+      enabled: moduleHistoryOpen && !!device,
       staleTime: 0,
     });
 
   const { data: feederHistoryResult, isLoading: feederHistoryLoading } =
     useQuery({
-      queryKey: ["feeder", "history"],
-      queryFn: getFeederHistory,
-      enabled: feederHistoryOpen,
+      queryKey: ["feeder", "history", device?.guid],
+      queryFn: () => getFeederHistory(device!.guid),
+      enabled: feederHistoryOpen && !!device,
       staleTime: 0,
     });
 
   const revertModuleMutation = useMutation({
-    mutationFn: revertModuleConfig,
+    mutationFn: (guid: string) => revertModuleConfig(device!.guid, guid),
     onSuccess: (result) => {
       if (result.success && result.data) {
-        queryClient.setQueryData(modulesQueryOptions.queryKey, result.data);
+        queryClient.setQueryData(
+          modulesQueryOptions(device?.guid).queryKey,
+          result.data,
+        );
         queryClient.invalidateQueries({ queryKey: ["modules", "history"] });
         setModuleHistoryOpen(false);
         toast.success(t("calibratePage.toasts.moduleReverted"));
@@ -171,10 +188,13 @@ export default function CalibratePage() {
   });
 
   const revertFeederMutation = useMutation({
-    mutationFn: revertFeederConfig,
+    mutationFn: (guid: string) => revertFeederConfig(device!.guid, guid),
     onSuccess: (result) => {
       if (result.success && result.data) {
-        queryClient.setQueryData(feederQueryOptions.queryKey, result.data);
+        queryClient.setQueryData(
+          feederQueryOptions(device?.guid).queryKey,
+          result.data,
+        );
         queryClient.invalidateQueries({ queryKey: ["feeder", "history"] });
         setFeederHistoryOpen(false);
         toast.success(t("calibratePage.toasts.feederReverted"));
@@ -215,11 +235,13 @@ export default function CalibratePage() {
     isLoading,
     active,
     sliderValues,
+    paddleCloseDelayValues,
     activeBin,
     isTesting,
     isUnconfigured,
     handleControl,
     handleSliderChange,
+    handlePaddleCloseDelayChange,
     handleTest,
     handleTestBin,
     handleSetPosition,
@@ -237,6 +259,7 @@ export default function CalibratePage() {
     handleFeederSetSpeed,
     handleFeederSetDuration,
     handleFeederSetPulseDuration,
+    handleFeederSetContinuous,
     handleFeederSetPauseDuration,
     handleFeederSetSettleDuration,
     handleFeed,
@@ -247,11 +270,20 @@ export default function CalibratePage() {
     irMonitoring,
     handleReadIR,
     handleToggleIrMonitor,
+    handleCopyCalibration,
+    handleExportConfig,
+    handleImportConfig,
+    isImporting,
   } = useCalibrationPage();
+
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="grid grid-cols-12 flex-1 min-h-0 overflow-hidden">
-      <nav className="col-span-2 min-h-0 h-full overflow-y-auto flex flex-col border-r p-2 gap-2 bg-sidebar/70">
+      <nav
+        className="col-span-2 min-h-0 h-full overflow-y-auto flex flex-col border-r p-2 gap-2 bg-sidebar/70"
+        data-tour="calibration-sections"
+      >
         {sectionNavItems.map((item) => (
           <button
             key={item.value}
@@ -271,44 +303,87 @@ export default function CalibratePage() {
       </nav>
 
       <div className="col-span-10 min-h-0 h-full overflow-y-auto @container p-4 flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-2 overflow-x-auto">
+          <div
+            className="flex items-center gap-2 shrink-0"
+            data-tour="calibration-connect"
+          >
+            {isConnected ? (
+              <Button variant="outline" onClick={disconnect}>
+                <IconDeviceUsbFilled />
+                {t("calibratePage.disconnect")}
+              </Button>
+            ) : (
+              <Button onClick={connect}>
+                <IconDeviceUsb />
+                {t("calibratePage.connectDevice")}
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              disabled={!isConnected || isTesting || isUnconfigured}
+              onClick={handleTest}
+            >
+              {isTesting
+                ? t("calibratePage.testing")
+                : t("calibratePage.runTest")}
+            </Button>
+            <Button
+              variant="outline"
+              disabled={!isConnected || activeBin !== null || isSampleRunning}
+              onClick={handleFeed}
+            >
+              {t("binRoutingControls.feed")}
+            </Button>
+            {isUnconfigured && (
+              <span className="text-sm text-muted-foreground">
+                {t("calibratePage.calibrateBeforeTest")}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button variant="outline" onClick={handleCopyCalibration}>
+              <IconClipboard />
+              {t("calibratePage.copyCalibration")}
+            </Button>
+            <Button variant="outline" onClick={handleExportConfig}>
+              <IconDownload />
+              {t("calibratePage.exportConfig")}
+            </Button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) void handleImportConfig(file);
+              }}
+            />
+            <Button
+              variant="outline"
+              disabled={isImporting}
+              onClick={() => importInputRef.current?.click()}
+            >
+              {isImporting ? (
+                <IconLoader2 className="animate-spin" />
+              ) : (
+                <IconUpload />
+              )}
+              {isImporting
+                ? t("calibratePage.importing")
+                : t("calibratePage.importConfig")}
+            </Button>
+            <CalibrationTour section={section} setSection={setSection} />
+          </div>
+        </div>
         {section === "modules" && (
           <>
-            <div className="flex flex-wrap items-center gap-2">
-              {isConnected ? (
-                <Button variant="outline" onClick={disconnect}>
-                  <IconDeviceUsbFilled />
-                  {t("calibratePage.disconnect")}
-                </Button>
-              ) : (
-                <Button onClick={connect}>
-                  <IconDeviceUsb />
-                  {t("calibratePage.connectDevice")}
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                disabled={!isConnected || isTesting || isUnconfigured}
-                onClick={handleTest}
-              >
-                {isTesting
-                  ? t("calibratePage.testing")
-                  : t("calibratePage.runTest")}
-              </Button>
-              {isUnconfigured && (
-                <span className="text-sm text-muted-foreground">
-                  {t("calibratePage.calibrateBeforeTest")}
-                </span>
-              )}
-            </div>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5" data-tour="channel-layout">
               <Label>{t("channelLayoutToggle.label")}</Label>
               <ChannelLayoutToggle />
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>{t("moduleCountStepper.label")}</Label>
-              <ModuleCountStepper />
-            </div>
-            <BinRoutingAssignment />
             <IrSensorPanel
               modules={modules}
               irStates={irStates}
@@ -323,9 +398,13 @@ export default function CalibratePage() {
               isConnected={isConnected}
               isSampleRunning={isSampleRunning}
               onTestBin={handleTestBin}
-              onFeed={handleFeed}
               onSampleRun={handleSampleRun}
             />
+            <div className="flex flex-col gap-1.5" data-tour="module-count">
+              <Label>{t("moduleCountStepper.label")}</Label>
+              <ModuleCountStepper />
+            </div>
+            <BinRoutingAssignment />
           </>
         )}
 
@@ -361,6 +440,7 @@ export default function CalibratePage() {
               onSetSpeed={handleFeederSetSpeed}
               onSetDuration={handleFeederSetDuration}
               onSetPulseDuration={handleFeederSetPulseDuration}
+              onSetContinuous={handleFeederSetContinuous}
               onSetPauseDuration={handleFeederSetPauseDuration}
               onSetSettleDuration={handleFeederSetSettleDuration}
             />
@@ -381,10 +461,12 @@ export default function CalibratePage() {
               configs={configs}
               active={active}
               sliderValues={sliderValues}
+              paddleCloseDelayValues={paddleCloseDelayValues}
               isLoading={isLoading}
               isConnected={isConnected}
               onControl={handleControl}
               onSliderChange={handleSliderChange}
+              onPaddleCloseDelayChange={handlePaddleCloseDelayChange}
               onSetPosition={handleSetPosition}
             />
           </>

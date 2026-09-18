@@ -11,8 +11,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { PhoneCameraCaptureStatus } from "@/features/scanner/api/use-phone-camera-capture";
+import { OcrBetaDialog } from "@/features/scanner/components/ocr-beta-dialog";
 import { PhoneCameraPairingDialog } from "@/features/scanner/components/phone-camera-pairing-dialog";
-import type { ZoomRange } from "@/features/scanner/types";
+import type { ZoomRange } from "@/lib/interfaces/scanner";
 import {
   IconAdjustments,
   IconCameraSpark,
@@ -28,6 +29,8 @@ interface ScannerMenuProps {
   isConnected: boolean;
   autoFeed: boolean;
   allowDuplicates: boolean;
+  ocrEnabled: boolean;
+  ocrSupported: boolean;
   zoom: number;
   zoomRange: ZoomRange | null;
   cameras: MediaDeviceInfo[];
@@ -42,11 +45,14 @@ interface ScannerMenuProps {
   onStartPhonePairing: () => void;
   onStopPhonePairing: () => void;
   onScannerConnect: () => void;
+  onScannerConnectBluetooth: () => void;
+  bluetoothSupported: boolean;
   onScannerDisconnect: () => void;
   onScannerRetry: () => void;
   onCalibrate: () => void;
   onAutoFeedChange: (enabled: boolean) => void;
   onAllowDuplicatesChange: (enabled: boolean) => void;
+  onOcrEnabledChange: (enabled: boolean) => void;
 }
 
 export function ScannerMenu({
@@ -54,6 +60,8 @@ export function ScannerMenu({
   isConnected,
   autoFeed,
   allowDuplicates,
+  ocrEnabled,
+  ocrSupported,
   zoom,
   zoomRange,
   cameras,
@@ -68,14 +76,23 @@ export function ScannerMenu({
   onStartPhonePairing,
   onStopPhonePairing,
   onScannerConnect,
+  onScannerConnectBluetooth,
+  bluetoothSupported,
   onScannerDisconnect,
   onScannerRetry,
   onCalibrate,
   onAutoFeedChange,
   onAllowDuplicatesChange,
+  onOcrEnabledChange,
 }: ScannerMenuProps) {
   const { t } = useTranslation("scanner");
   const [phoneDialogOpen, setPhoneDialogOpen] = useState(false);
+  const [ocrDialogOpen, setOcrDialogOpen] = useState(false);
+
+  const handleOcrCheckedChange = (checked: boolean) => {
+    if (checked) setOcrDialogOpen(true);
+    else onOcrEnabledChange(false);
+  };
 
   const handleOpenPhonePairing = () => {
     setPhoneDialogOpen(true);
@@ -103,11 +120,13 @@ export function ScannerMenu({
       />
       <DropdownMenu>
         <DropdownMenuTrigger
-          render={<Button size="icon" variant="secondary" />}
+          render={
+            <Button size="icon" variant="secondary" data-tour="scanner-menu" />
+          }
         >
           <IconAdjustments size={16} />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
               <IconCameraSpark />
@@ -230,17 +249,40 @@ export function ScannerMenu({
                   </DropdownMenuItem>
                 </>
               ) : (
-                <DropdownMenuItem
-                  disabled={scanningBlocked}
-                  onClick={onScannerConnect}
-                >
-                  {t("scannerMenu.connect")}
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem
+                    disabled={scanningBlocked}
+                    onClick={onScannerConnect}
+                  >
+                    {t("scannerMenu.connectUsb")}
+                  </DropdownMenuItem>
+                  {bluetoothSupported && (
+                    <DropdownMenuItem
+                      disabled={scanningBlocked}
+                      onClick={onScannerConnectBluetooth}
+                    >
+                      {t("scannerMenu.connectBluetooth")}
+                    </DropdownMenuItem>
+                  )}
+                </>
               )}
             </DropdownMenuSubContent>
           </DropdownMenuSub>
+          <DropdownMenuSeparator />
+          <DropdownMenuCheckboxItem
+            checked={ocrEnabled}
+            disabled={!ocrSupported}
+            onCheckedChange={handleOcrCheckedChange}
+          >
+            {t("scannerMenu.ocrTextMatching")}
+          </DropdownMenuCheckboxItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <OcrBetaDialog
+        open={ocrDialogOpen}
+        onOpenChange={setOcrDialogOpen}
+        onConfirm={() => onOcrEnabledChange(true)}
+      />
     </div>
   );
 }

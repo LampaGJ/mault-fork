@@ -1,5 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { DynamicDialog } from "@/components/ui/responsive-dialog";
 import {
@@ -9,24 +14,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { checkCollectionName } from "@/features/collections/api/collections";
 import { useCollections } from "@/features/collections/api/use-collections";
 import {
   gameLanguagesQueryOptions,
   gamesQueryOptions,
 } from "@/features/games/api/games";
-import { LANGUAGE_LABELS } from "@/lib/languages";
+import { EMPTY_LANGUAGES, LANGUAGE_LABELS } from "@/lib/constants/languages";
 import {
   createCollectionSchema,
   type CreateCollectionFormValues,
 } from "@/schemas/collections.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { DEFAULT_MATCH_THRESHOLD_PERCENT } from "@magic-vault/shared";
 import { IconLoader2 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-
-const EMPTY_LANGUAGES: string[] = [];
 
 interface CreateCollectionDialogProps {
   trigger: (ctx: { disabled: boolean; noGames: boolean }) => ReactElement;
@@ -34,14 +39,14 @@ interface CreateCollectionDialogProps {
 
 export function CreateCollectionDialog({ trigger }: CreateCollectionDialogProps) {
   const { t } = useTranslation("collections");
-  const { collections, isMutating, createCollection } = useCollections();
+  const { isMutating, createCollection } = useCollections();
   const { data: games = [] } = useQuery(gamesQueryOptions);
   const activeGames = games.filter((g) => g.isActive);
   const [open, setOpen] = useState(false);
 
-  const form = useForm<CreateCollectionFormValues>({
+  const form = useForm({
     resolver: zodResolver(createCollectionSchema),
-    defaultValues: { name: "", gameGuid: "", lang: "" },
+    defaultValues: { name: "", gameGuid: "", lang: "", matchThreshold: null },
     mode: "onChange",
   });
 
@@ -62,6 +67,26 @@ export function CreateCollectionDialog({ trigger }: CreateCollectionDialogProps)
     }
   }, [gameLanguages, form]);
 
+  const nameValue = form.watch("name");
+  const { data: nameCheck } = useQuery({
+    queryKey: ["collections", "check-name", nameValue],
+    queryFn: () => checkCollectionName(nameValue),
+    enabled: open && !!nameValue?.trim(),
+    staleTime: 0,
+  });
+
+  useEffect(() => {
+    if (!open || !nameValue?.trim()) return;
+    if (nameCheck?.success && nameCheck.data && !nameCheck.data.available) {
+      form.setError("name", {
+        type: "taken",
+        message: t("createDialog.duplicateName"),
+      });
+    } else {
+      form.clearErrors("name");
+    }
+  }, [open, nameValue, nameCheck, form, t]);
+
   const handleOpenChange = useCallback(
     (isOpen: boolean) => {
       setOpen(isOpen);
@@ -71,6 +96,7 @@ export function CreateCollectionDialog({ trigger }: CreateCollectionDialogProps)
           name: firstGame?.name ?? "",
           gameGuid: firstGame?.guid ?? "",
           lang: "",
+          matchThreshold: null,
         });
         setNameEdited(false);
       } else {
@@ -82,21 +108,16 @@ export function CreateCollectionDialog({ trigger }: CreateCollectionDialogProps)
 
   const handleCreate = useCallback(
     async (values: CreateCollectionFormValues) => {
-      const isDuplicate = collections.some(
-        (c) => c.name.trim().toLowerCase() === values.name.trim().toLowerCase(),
+      await createCollection(
+        values.name,
+        values.gameGuid,
+        values.lang,
+        values.matchThreshold,
       );
-      if (isDuplicate) {
-        form.setError("name", {
-          type: "manual",
-          message: t("createDialog.duplicateName"),
-        });
-        return;
-      }
-      await createCollection(values.name, values.gameGuid, values.lang);
       form.reset();
       setOpen(false);
     },
-    [createCollection, collections, form, t],
+    [createCollection, form],
   );
 
   return (
@@ -217,6 +238,37 @@ export function CreateCollectionDialog({ trigger }: CreateCollectionDialogProps)
                 </SelectContent>
               </Select>
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+            </Field>
+          )}
+        />
+        <Controller
+          name="matchThreshold"
+          control={form.control}
+          render={({ field, fieldState }) => (
+            <Field data-invalid={fieldState.invalid || undefined}>
+              <FieldLabel htmlFor="collection-match-threshold">
+                {t("editDialog.matchThresholdLabel")}
+              </FieldLabel>
+              <Input
+                id="collection-match-threshold"
+                type="number"
+                min={1}
+                max={99}
+                value={field.value ?? ""}
+                onChange={(e) => field.onChange(e.target.value)}
+                onBlur={field.onBlur}
+                aria-invalid={fieldState.invalid}
+                placeholder={t("editDialog.matchThresholdPlaceholder", {
+                  default: DEFAULT_MATCH_THRESHOLD_PERCENT,
+                })}
+              />
+              {fieldState.invalid ? (
+                <FieldError errors={[fieldState.error]} />
+              ) : (
+                <FieldDescription>
+                  {t("editDialog.matchThresholdHint")}
+                </FieldDescription>
+              )}
             </Field>
           )}
         />

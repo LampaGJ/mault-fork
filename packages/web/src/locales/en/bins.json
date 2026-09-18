@@ -1,19 +1,24 @@
 {
   "nonEnglishRulesBanner": {
-    "message": "This collection is in {{language}}, so rule fields below use free text instead of dropdowns — the card data itself comes back in {{language}}, not English, so English options wouldn't match."
+    "message": "This collection is in {{language}}, so rule fields below use free text instead of dropdowns. The card data itself comes back in {{language}}, not English, so English options wouldn't match."
   },
   "noGameBanner": {
     "message": "This collection has no game assigned, so there are no card fields to build bin rules from. Recreate the collection and select a game to enable sorting."
   },
   "binCard": {
+    "override": "Override",
     "binLabel": "Bin {{number}}",
     "catchAll": "Catch-all",
     "ruleCount_one": "{{count}} rule",
     "ruleCount_other": "{{count}} rules",
     "allUnmatched": "All unmatched cards",
-    "clickToConfigure": "Click to configure"
+    "clickToConfigure": "Click to configure",
+    "waitingForValue": "Waiting for next value",
+    "scanOnlyDisabled": "Scan only is on"
   },
   "binConfigPanel": {
+    "overrideLabel": "Override rules",
+    "overrideDescription": "When these rules match, this bin takes priority over ordinary bins. If several override bins match, the lowest bin number wins. For example, use Price ≥ 1 here to override color bins for cards worth $1 or more.",
     "needCatchAllError": "At least one bin must be catch-all.",
     "binHeading": "Bin {{number}}",
     "catchAllEnabled": "Catch-all enabled",
@@ -22,7 +27,12 @@
     "rulesLabel": "Rules",
     "apiDocsLink": "Field reference",
     "clear": "Clear",
-    "save": "Save"
+    "save": "Save",
+    "cardLimitLabel": "Bin capacity",
+    "cardLimitPlaceholder": "Unlimited",
+    "cardLimitDescription": "Stops scanning and prompts to empty the bin once it holds this many cards. Leave blank for no limit.",
+    "autoAssignWaiting": "Waiting for a new {{field}} to appear",
+    "scanOnlyLocked": "Scan Only is on — every card routes straight to bin 7. Turn it off above to configure bins."
   },
   "binList": {
     "needCatchAll": "One bin must be set as catch-all."
@@ -56,6 +66,8 @@
     "conditionCount_other": "{{count}} conditions",
     "sortingLogic": "Sorting Logic",
     "selectSetPlaceholder": "Select a set...",
+    "noMatchingSets": "No matching sets",
+    "duplicateName": "A set with this name already exists",
     "editSortingLogic": "Edit Sorting Logic",
     "deleteSetTitle": "Delete Set",
     "deleteSetDescription": "Permanently deletes \"{{name}}\". This cannot be undone.",
@@ -81,10 +93,38 @@
       "createSetFailed": "Failed to create set",
       "saveSetFailed": "Failed to save set",
       "renameSetFailed": "Failed to rename set",
-      "deleteSetFailed": "Failed to delete set"
+      "deleteSetFailed": "Failed to delete set",
+      "autoAssignFailed": "Failed to update auto-detect settings",
+      "autoAssignResetFailed": "Failed to reset auto-detected bins",
+      "scanOnlyFailed": "Failed to update scan only settings",
+      "emptyBinFailed": "Failed to mark bin as emptied",
+      "repackFailed": "Failed to update repack settings"
     }
   },
   "binsPage": {
     "binLabel": "Bin {{number}}"
+  },
+  "autoAssignPanel": {
+    "heading": "Auto-detect sorting",
+    "description": "Learns bin assignments as you scan: the first time a new value appears for the field below, it claims the next open bin. Repeats route back automatically, and once every bin is taken, new values fall to the catch-all.",
+    "fieldPlaceholder": "Choose a field...",
+    "reset": "Reset",
+    "resetConfirmTitle": "Reset auto-detected bins?",
+    "resetConfirmDescription": "Clears every bin's learned value in this set. New scans will refill them from scratch.",
+    "notYetAssigned": "Not yet assigned"
+  },
+  "scanOnlyPanel": {
+    "heading": "Scan only",
+    "description": "Sends every card straight to bin 7, the catch-all, without checking any sorting rules. Turn this off to configure bins manually."
+  },
+  "repackPanel": {
+    "heading": "Build repacks",
+    "description": "Every non-catch-all bin builds its own pack at the same time from the slots you define below (e.g. 3 commons, 2 uncommons, 1 rare). Anything that doesn't fit an open slot in any bin goes to the catch-all. Once a bin's pack is complete it stops receiving cards - empty it to start a new pack there while the others keep filling.",
+    "allowDuplicatesLabel": "Allow duplicate cards",
+    "allowDuplicatesDescription": "When off, a card already in a given pack is skipped for that bin (it can still start a different pack that doesn't have it yet) instead of being added again.",
+    "slotsLabel": "Pack slots",
+    "slotCountLabel": "Count",
+    "addSlot": "Add slot",
+    "save": "Save"
   }
 }

@@ -1,14 +1,14 @@
+import type { ScannedCard } from "./interfaces/scanner.interface";
 import type {
   BinCondition,
   BinConfig,
   BinRuleGroup,
+  BinSet,
   FieldMeta,
+  RepackSlot,
 } from "./interfaces/sort-bins.interface";
 import { isRuleGroup } from "./interfaces/sort-bins.interface";
 
-// `object` (not `Record<string, unknown>`) so concrete card interfaces like
-// ScryfallCard - which have no index signature - are assignable without a
-// cast at every call site. getByPath narrows internally as it walks the path.
 export type SourceCard = object;
 
 export function getByPath(card: SourceCard, path: string): unknown {
@@ -155,7 +155,7 @@ function evaluateCondition(
   }
 }
 
-function evaluateRuleGroup(
+export function evaluateRuleGroup(
   card: SourceCard,
   group: BinRuleGroup,
   fieldDefinitions: FieldMeta[],
@@ -183,6 +183,7 @@ export function evaluateCardBin(
   fieldDefinitions: FieldMeta[],
 ): BinConfig | undefined {
   let catchAll: BinConfig | undefined;
+  let firstMatch: BinConfig | undefined;
 
   for (const config of configs) {
     if (config.isCatchAll) {
@@ -193,8 +194,107 @@ export function evaluateCardBin(
       config.rules.conditions.length > 0 &&
       evaluateRuleGroup(card, config.rules, fieldDefinitions)
     ) {
-      return config;
+      if (config.isOverride) return config;
+      firstMatch ??= config;
     }
+  }
+
+  return firstMatch ?? catchAll;
+}
+
+export function countCardsInBin(
+  cards: Pick<ScannedCard, "binNumber" | "scannedAt">[],
+  bin: Pick<BinConfig, "binNumber" | "lastEmptiedAt">,
+): number {
+  return cards.filter(
+    (c) =>
+      c.binNumber === bin.binNumber &&
+      (bin.lastEmptiedAt == null || c.scannedAt > bin.lastEmptiedAt),
+  ).length;
+}
+
+export function isBinFull(
+  cards: Pick<ScannedCard, "binNumber" | "scannedAt">[],
+  bin: Pick<BinConfig, "binNumber" | "lastEmptiedAt" | "cardLimit">,
+): boolean {
+  if (bin.cardLimit == null) return false;
+  return countCardsInBin(cards, bin) >= bin.cardLimit;
+}
+
+export function getCardsInBin(
+  cards: { binNumber?: number | null; scannedAt: number; card: SourceCard }[],
+  bin: Pick<BinConfig, "binNumber" | "lastEmptiedAt">,
+): SourceCard[] {
+  return cards
+    .filter(
+      (c) =>
+        c.binNumber === bin.binNumber &&
+        (bin.lastEmptiedAt == null || c.scannedAt > bin.lastEmptiedAt),
+    )
+    .map((c) => c.card);
+}
+
+export function countSlotMatches(
+  cards: SourceCard[],
+  slot: RepackSlot,
+  fieldDefinitions: FieldMeta[],
+): number {
+  return cards.filter((c) => evaluateRuleGroup(c, slot.rule, fieldDefinitions))
+    .length;
+}
+
+export function isRepackComplete(
+  slots: RepackSlot[],
+  fieldDefinitions: FieldMeta[],
+  cardsInPack: SourceCard[],
+): boolean {
+  if (slots.length === 0) return false;
+  return slots.every(
+    (slot) =>
+      slot.targetCount > 0 &&
+      countSlotMatches(cardsInPack, slot, fieldDefinitions) >= slot.targetCount,
+  );
+}
+
+function isDuplicateInPack(
+  card: SourceCard,
+  cardsInPack: SourceCard[],
+): boolean {
+  const id = (card as { id?: unknown }).id;
+  return (
+    id != null && cardsInPack.some((c) => (c as { id?: unknown }).id === id)
+  );
+}
+
+export function evaluateRepackBin(
+  card: SourceCard,
+  configs: BinConfig[],
+  fieldDefinitions: FieldMeta[],
+  binSet: Pick<BinSet, "repackSlots" | "repackAllowDuplicates">,
+  cardsInBin: (bin: BinConfig) => SourceCard[],
+): BinConfig | undefined {
+  const catchAll = getCatchAllBin(configs);
+
+  for (const bin of configs) {
+    if (bin.isCatchAll) continue;
+
+    const cardsInPack = cardsInBin(bin);
+    if (isRepackComplete(binSet.repackSlots, fieldDefinitions, cardsInPack)) {
+      continue;
+    }
+    if (!binSet.repackAllowDuplicates && isDuplicateInPack(card, cardsInPack)) {
+      continue;
+    }
+
+    const openSlot = binSet.repackSlots.find(
+      (slot) =>
+        slot.targetCount > 0 &&
+        slot.rule.conditions.length > 0 &&
+        evaluateRuleGroup(card, slot.rule, fieldDefinitions) &&
+        countSlotMatches(cardsInPack, slot, fieldDefinitions) <
+          slot.targetCount,
+    );
+    if (openSlot) return bin;
   }
 
   return catchAll;

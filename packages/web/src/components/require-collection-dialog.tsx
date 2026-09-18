@@ -15,7 +15,7 @@ import {
   gameLanguagesQueryOptions,
   gamesQueryOptions,
 } from "@/features/games/api/games";
-import { LANGUAGE_LABELS } from "@/lib/languages";
+import { EMPTY_LANGUAGES, LANGUAGE_LABELS } from "@/lib/constants/languages";
 import {
   createCollectionSchema,
   type CreateCollectionFormValues,
@@ -27,8 +27,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
-const EMPTY_LANGUAGES: string[] = [];
-
 export function RequireCollectionDialog() {
   const { t } = useTranslation("collections");
   const { collections, isLoading, isMutating, createCollection } =
@@ -37,9 +35,9 @@ export function RequireCollectionDialog() {
   const { data: games = [] } = useQuery(gamesQueryOptions);
   const activeGames = games.filter((g) => g.isActive);
 
-  const form = useForm<CreateCollectionFormValues>({
+  const form = useForm({
     resolver: zodResolver(createCollectionSchema),
-    defaultValues: { name: "", gameGuid: "", lang: "" },
+    defaultValues: { name: "", gameGuid: "", lang: "", matchThreshold: null },
     mode: "onChange",
   });
 
@@ -66,7 +64,12 @@ export function RequireCollectionDialog() {
 
   const handleCreate = useCallback(
     async (values: CreateCollectionFormValues) => {
-      await createCollection(values.name, values.gameGuid, values.lang);
+      await createCollection(
+        values.name,
+        values.gameGuid,
+        values.lang,
+        values.matchThreshold,
+      );
       form.reset();
     },
     [createCollection, form],

@@ -10,6 +10,7 @@
     "capturedScan": "Aufgenommener Scan",
     "matchedCard": "Übereinstimmende Karte",
     "foil": "Foil",
+    "foilNone": "Kein Foil",
     "regularPrice": "Normal: {{price}}",
     "foilPrice": "Foil: {{price}}",
     "correctCard": "Karte korrigieren",
@@ -33,6 +34,7 @@
   "cardFilterPopover": {
     "color": "Farbe",
     "rarity": "Seltenheit",
+    "foilType": "Foil-Typ",
     "bin": "Fach",
     "unassigned": "Nicht zugewiesen",
     "minMatch": "Min. Übereinstimmung",
@@ -56,6 +58,8 @@
     "startTooltip": "Die erste Karte zuführen und den Scan starten",
     "autoFeedOnTooltip": "Auto-Zuführung an — die nächste Karte wird nach jedem Scan automatisch zugeführt",
     "autoFeedOffTooltip": "Auto-Zuführung aus — jede Karte manuell zuführen",
+    "foilNone": "Kein Foil",
+    "foilGeneric": "Foil",
     "clearDeviceTooltip": "Gerät leeren (öffnet alle unteren Klappen)",
     "noCardsMatchFilters": "Keine Karten entsprechen den aktuellen Filtern",
     "tryAdjusting": "Passe deine Suche, Sortierung oder Filter an",
@@ -99,6 +103,8 @@
     "sortDescDefault": "Hoch-Niedrig",
     "deselectAll": "Alle abwählen",
     "selectAll": "Alle auswählen",
+    "gridView": "Rasteransicht",
+    "listView": "Listenansicht",
     "sessionSummaryExport": "Sitzungsübersicht & Export",
     "deleteScannedCardsTitle": "Gescannte Karten löschen",
     "deleteScannedCardsDescription": "Dadurch werden alle Karten dauerhaft aus deiner Sammlung gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
@@ -109,6 +115,7 @@
   },
   "scannedCardItem": {
     "multipleMatchesTooltip": "Mehrere ähnliche Treffer - zum Überprüfen tippen",
+    "multipleMatchesResolvedTooltip": "Mehrere ähnliche Treffer - überprüft und korrigiert",
     "foil": "Foil",
     "matchTooltip": "Wie genau das gescannte Bild mit dieser Karte übereinstimmt, basierend auf visueller Ähnlichkeitssuche",
     "bin": "Fach {{number}}",
@@ -126,7 +133,53 @@
     "byRarity": "Nach Seltenheit",
     "topSets": "Top-Editionen",
     "includePreviouslyDownloaded": "Bereits heruntergeladene einschließen",
+    "applyGridFilters": "Aktive Filter anwenden ({{count}})",
     "close": "Schließen",
-    "download": "Herunterladen ({{count}})"
+    "download": "Herunterladen ({{count}})",
+    "sessionWrappedToggle": "Wrapped"
+  },
+  "sessionWrapped": {
+    "srTitle": "{{collectionName}} Jahresrückblick",
+    "srDescription": "Ein Rückblick auf deine Scan-Sitzung.",
+    "previous": "Zurück",
+    "next": "Weiter",
+    "skipAll": "Alles überspringen",
+    "intro": {
+      "eyebrow": "Deine Sitzung",
+      "title": "{{collectionName}} Rückblick",
+      "subtitle": "Tippe oder nutze die Pfeiltasten für deinen Rückblick"
+    },
+    "total": {
+      "title": "Karten sortiert"
+    },
+    "unique": {
+      "title": "einzigartige Karten",
+      "subtitle": "{{percent}}% deiner Ausbeute war neu"
+    },
+    "set": {
+      "eyebrow": "Deine Top-Edition",
+      "subtitle": "{{count}} Karten"
+    },
+    "rarity": {
+      "eyebrow": "Deine Seltenheitsverteilung"
+    },
+    "color": {
+      "eyebrow": "Deine dominante Farbe",
+      "subtitle": "{{count}} von {{total}} Karten"
+    },
+    "mvp": {
+      "eyebrow": "Deine wertvollste Karte"
+    },
+    "value": {
+      "eyebrow": "Gesamtausbeute",
+      "avgLabel": "Durchschnitt pro Karte:"
+    },
+    "speed": {
+      "eyebrow": "Dein Tempo",
+      "unit": "Karten / Stunde",
+      "fast": "Blitzschnell",
+      "medium": "Solides Tempo",
+      "slow": "Langsam und gründlich"
+    }
   }
 }

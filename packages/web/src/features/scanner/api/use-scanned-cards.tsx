@@ -1,31 +1,43 @@
 import {
+  type BinConfig,
   type BinRoute,
   type PlayingCard,
   type PlayingCardWithDistance,
   type ScannedCard,
+  type UnmatchedCard,
   evaluateCardBin,
+  evaluateRepackBin,
+  getCardsInBin,
   getCatchAllBin,
 } from "@magic-vault/shared";
 
+import { billingQueryOptions } from "@/features/billing/api/billing";
 import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
 import { useBinRoutes } from "@/features/calibration/api/use-bin-routes";
 import {
   addCollectionCard,
+  addUnmatchedCard as addUnmatchedCardApi,
   loadCollectionCards,
+  loadUnmatchedCards,
   markCollectionCardsDownloaded,
   releaseScanLock,
   removeCollectionCard,
   removeCollectionCards,
-  setCollectionCardFoil,
+  removeUnmatchedCard as removeUnmatchedCardApi,
+  setCollectionCardFoilType,
   updateCollectionCard,
 } from "@/features/collections/api/collections";
 import { useCollectionLocks } from "@/features/collections/api/use-collection-locks";
 import { useCollections } from "@/features/collections/api/use-collections";
-import { reportSerialEvent } from "@/features/notifications/api/notification-settings";
+import { useOrg } from "@/features/companies/api/use-organization";
+import { useAutoFeed } from "@/features/scanner/api/use-auto-feed";
 import { useScanTimer } from "@/features/scanner/api/use-scan-timer";
 import { useSerial } from "@/features/scanner/api/use-serial";
-import type { ScannedCardsContextValue } from "@/features/scanner/types";
+import { findAutoAssignTarget } from "@/features/scanner/lib/auto-assign";
+import { routeCardToBin } from "@/features/scanner/lib/route-card-to-bin";
+import type { ScannedCardsContextValue } from "@/lib/interfaces/scanner";
 import { generateScanId } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   createContext,
   useCallback,
@@ -48,8 +60,16 @@ export function ScannedCardsProvider({
 }) {
   const { t } = useTranslation("scanner");
   const [cards, setCards] = useState<ScannedCard[]>([]);
+  const [unmatchedCards, setUnmatchedCards] = useState<UnmatchedCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { configs: binConfigs, fieldDefinitions } = useBinConfigs();
+  const {
+    configs: binConfigs,
+    fieldDefinitions,
+    selectedSet,
+    save: saveBinConfig,
+    emptyBin,
+  } = useBinConfigs();
+  const [binLimitBin, setBinLimitBin] = useState<BinConfig | null>(null);
   const { routes: binRoutes } = useBinRoutes();
   const { sendRoute, sendCommand, receiveResponse, isConnected, isReady } =
     useSerial();
@@ -59,6 +79,10 @@ export function ScannedCardsProvider({
   const locksRef = useRef(locks);
   const currentUserIdRef = useRef(currentUserId);
 
+  const { activeOrg } = useOrg();
+  const activeOrgIdRef = useRef(activeOrg?.id);
+  const queryClient = useQueryClient();
+
   useEffect(() => {
     locksRef.current = locks;
   }, [locks]);
@@ -66,9 +90,16 @@ export function ScannedCardsProvider({
     currentUserIdRef.current = currentUserId;
   }, [currentUserId]);
 
+  useEffect(() => {
+    activeOrgIdRef.current = activeOrg?.id;
+  }, [activeOrg?.id]);
+
   const binConfigsRef = useRef(binConfigs);
   const binRoutesRef = useRef(binRoutes);
   const fieldDefinitionsRef = useRef(fieldDefinitions);
+  const autoAssignFieldRef = useRef(selectedSet?.autoAssignField ?? null);
+  const selectedSetRef = useRef(selectedSet);
+  const cardsRef = useRef(cards);
   const serialRef = useRef({
     sendRoute,
     sendCommand,
@@ -79,10 +110,6 @@ export function ScannedCardsProvider({
   const activeCollectionRef = useRef(activeCollection);
   const emptyCollectionRef = useRef(emptyCollection);
   const prevCollectionGuidRef = useRef<string | undefined>(undefined);
-  const [autoFeed, setAutoFeedState] = useState(true);
-  const autoFeedRef = useRef(true);
-  const cardArrivedHookRef = useRef<(() => void) | null>(null);
-  const pauseHookRef = useRef<(() => void) | null>(null);
   const [timerTrigger, setTimerTrigger] = useState<number | undefined>(
     undefined,
   );
@@ -91,6 +118,20 @@ export function ScannedCardsProvider({
     timerTrigger,
     timerResetSignal,
   );
+
+  const {
+    autoFeed,
+    isAutoFeedEnabled,
+    setAutoFeed,
+    disableAutoFeed,
+    pause,
+    triggerAutoFeed,
+    registerCardArrivedHook,
+    registerPauseHook,
+  } = useAutoFeed({ serialRef, activeCollectionRef });
+
+  const [forceFoilType, setForceFoilTypeState] = useState<string | null>(null);
+  const forceFoilTypeRef = useRef<string | null>(null);
 
   useEffect(() => {
     binConfigsRef.current = binConfigs;
@@ -103,6 +144,18 @@ export function ScannedCardsProvider({
   useEffect(() => {
     fieldDefinitionsRef.current = fieldDefinitions;
   }, [fieldDefinitions]);
+
+  useEffect(() => {
+    autoAssignFieldRef.current = selectedSet?.autoAssignField ?? null;
+  }, [selectedSet?.autoAssignField]);
+
+  useEffect(() => {
+    selectedSetRef.current = selectedSet;
+  }, [selectedSet]);
+
+  useEffect(() => {
+    cardsRef.current = cards;
+  }, [cards]);
 
   useEffect(() => {
     emptyCollectionRef.current = emptyCollection;
@@ -118,6 +171,35 @@ export function ScannedCardsProvider({
     };
   }, [sendRoute, sendCommand, receiveResponse, isConnected, isReady]);
 
+  const resolveMatchedBin = useCallback(
+    (card: PlayingCardWithDistance): BinConfig | undefined => {
+      const set = selectedSetRef.current;
+      if (set?.isRepackMode) {
+        return evaluateRepackBin(
+          card,
+          binConfigsRef.current,
+          fieldDefinitionsRef.current,
+          set,
+          (bin) =>
+            getCardsInBin(
+              cardsRef.current.map((c) => ({
+                binNumber: c.binNumber,
+                scannedAt: c.scannedAt,
+                card: c.card,
+              })),
+              bin,
+            ),
+        );
+      }
+      return evaluateCardBin(
+        card,
+        binConfigsRef.current,
+        fieldDefinitionsRef.current,
+      );
+    },
+    [],
+  );
+
   const resolveRoute = useCallback((binNumber: number): BinRoute => {
     const found = binRoutesRef.current.find((r) => r.binNumber === binNumber);
     if (found) return found;
@@ -128,106 +210,10 @@ export function ScannedCardsProvider({
     return { binNumber, module: lastModule, direction: "bottom" };
   }, []);
 
-  const setAutoFeed = useCallback((enabled: boolean) => {
-    autoFeedRef.current = enabled;
-    setAutoFeedState(enabled);
+  const setForceFoilType = useCallback((foilType: string | null) => {
+    forceFoilTypeRef.current = foilType;
+    setForceFoilTypeState(foilType);
   }, []);
-
-  const registerCardArrivedHook = useCallback((fn: () => void) => {
-    cardArrivedHookRef.current = fn;
-    return () => {
-      if (cardArrivedHookRef.current === fn) cardArrivedHookRef.current = null;
-    };
-  }, []);
-
-  const registerPauseHook = useCallback((fn: () => void) => {
-    pauseHookRef.current = fn;
-    return () => {
-      if (pauseHookRef.current === fn) pauseHookRef.current = null;
-    };
-  }, []);
-
-  const triggerAutoFeed = useCallback(async () => {
-    const sent = await serialRef.current.sendCommand(
-      JSON.stringify({ feeder: true }),
-    );
-    if (!sent) {
-      autoFeedRef.current = false;
-      setAutoFeedState(false);
-      toast.error(t("scannedCards.autoFeedFailed.title"), {
-        description: t("scannedCards.autoFeedFailed.description"),
-      });
-      void reportSerialEvent({
-        command: "auto-feed",
-        sent: false,
-        response: null,
-        collectionGuid: activeCollectionRef.current?.guid,
-      });
-      return;
-    }
-    const response = await serialRef.current.receiveResponse(10000);
-    if (!response) {
-      autoFeedRef.current = false;
-      setAutoFeedState(false);
-      toast.error(t("scannedCards.autoFeedTimeout.title"), {
-        description: t("scannedCards.autoFeedTimeout.description"),
-      });
-      void reportSerialEvent({
-        command: "auto-feed",
-        sent: true,
-        response: null,
-        collectionGuid: activeCollectionRef.current?.guid,
-      });
-      return;
-    }
-    try {
-      const parsed = JSON.parse(response) as Record<string, unknown>;
-      if (parsed.empty) {
-        autoFeedRef.current = false;
-        setAutoFeedState(false);
-        pauseHookRef.current?.();
-        toast.error(t("scannedCards.feederEmpty.title"), {
-          description: t("scannedCards.feederEmpty.description"),
-          duration: Infinity,
-          dismissible: true,
-        });
-        void reportSerialEvent({
-          command: "auto-feed",
-          sent: true,
-          response: parsed,
-          collectionGuid: activeCollectionRef.current?.guid,
-        });
-      } else if (parsed.error) {
-        autoFeedRef.current = false;
-        setAutoFeedState(false);
-        toast.error(t("scannedCards.feederError.title"), {
-          description: String(parsed.error),
-          duration: Infinity,
-          dismissible: true,
-        });
-        void reportSerialEvent({
-          command: "auto-feed",
-          sent: true,
-          response: parsed,
-          collectionGuid: activeCollectionRef.current?.guid,
-        });
-      } else {
-        cardArrivedHookRef.current?.();
-      }
-    } catch {
-      autoFeedRef.current = false;
-      setAutoFeedState(false);
-      toast.error(t("scannedCards.autoFeedError.title"), {
-        description: t("scannedCards.autoFeedError.description"),
-      });
-      void reportSerialEvent({
-        command: "auto-feed",
-        sent: true,
-        response,
-        collectionGuid: activeCollectionRef.current?.guid,
-      });
-    }
-  }, [t]);
 
   useEffect(() => {
     const prev = prevCollectionGuidRef.current;
@@ -249,17 +235,24 @@ export function ScannedCardsProvider({
   useEffect(() => {
     if (!activeCollection) {
       setCards([]);
+      setUnmatchedCards([]);
       setIsLoading(false);
       return;
     }
 
     let cancelled = false;
     setCards([]);
+    setUnmatchedCards([]);
     setIsLoading(true);
 
-    loadCollectionCards(activeCollection.guid)
-      .then((r) => {
-        if (!cancelled) setCards(r.data ?? []);
+    Promise.all([
+      loadCollectionCards(activeCollection.guid),
+      loadUnmatchedCards(activeCollection.guid),
+    ])
+      .then(([cardsResult, unmatchedResult]) => {
+        if (cancelled) return;
+        setCards(cardsResult.data ?? []);
+        setUnmatchedCards(unmatchedResult.data ?? []);
       })
       .catch((err) => {
         if (!cancelled) console.error("Failed to load collection cards:", err);
@@ -295,11 +288,26 @@ export function ScannedCardsProvider({
         return;
       }
 
-      const matchedBin = evaluateCardBin(
-        card,
-        binConfigsRef.current,
-        fieldDefinitionsRef.current,
-      );
+      let matchedBin = resolveMatchedBin(card);
+      const autoTarget = selectedSetRef.current?.isRepackMode
+        ? null
+        : findAutoAssignTarget(
+            card,
+            binConfigsRef.current,
+            fieldDefinitionsRef.current,
+            autoAssignFieldRef.current,
+          );
+      if (autoTarget) {
+        binConfigsRef.current = binConfigsRef.current.map((c) =>
+          c.binNumber === autoTarget.binNumber
+            ? { ...c, rules: autoTarget.rules }
+            : c,
+        );
+        matchedBin = binConfigsRef.current.find(
+          (c) => c.binNumber === autoTarget.binNumber,
+        );
+        saveBinConfig(autoTarget.binNumber, autoTarget.rules);
+      }
       const record: ScannedCard = {
         scanId: generateScanId(),
         card,
@@ -309,96 +317,106 @@ export function ScannedCardsProvider({
         alternativeMatches: alternativeMatches?.length
           ? alternativeMatches
           : undefined,
+        isFoil: forceFoilTypeRef.current != null || undefined,
+        foilType: forceFoilTypeRef.current ?? undefined,
       };
 
       setCards((prev) => [record, ...prev]);
       setTimerTrigger(record.scannedAt);
+
+      const orgId = activeOrgIdRef.current;
+      const billingQueryKey = orgId
+        ? billingQueryOptions(orgId).queryKey
+        : undefined;
+      if (billingQueryKey) {
+        queryClient.setQueryData(billingQueryKey, (old) =>
+          old ? { ...old, cardsScannedToday: old.cardsScannedToday + 1 } : old,
+        );
+      }
+
       addCollectionCard(collection.guid, record)
         .then((result) => {
           if (!result.success) {
             setCards((prev) => prev.filter((c) => c.scanId !== record.scanId));
+            if (billingQueryKey) {
+              queryClient.setQueryData(billingQueryKey, (old) =>
+                old
+                  ? {
+                      ...old,
+                      cardsScannedToday: Math.max(0, old.cardsScannedToday - 1),
+                    }
+                  : old,
+              );
+            }
+            if (result.binLimitReached) {
+              // Card wasn't persisted or physically routed - the bin filled
+              // up before this scan, so scanning stays blocked until addressed.
+              disableAutoFeed();
+              pause();
+              setBinLimitBin(matchedBin ?? null);
+              return;
+            }
             const key = result.scanLimitReached
               ? "scannedCards.scanLimitReached"
               : "scannedCards.collectionLocked";
             toast.error(t(`${key}.title`), {
               description: t(`${key}.description`),
             });
+            return;
+          }
+
+          // Only route physically once the server has confirmed the bin
+          // wasn't full, so a rejected card never gets routed either.
+          if (
+            matchedBin &&
+            serialRef.current.isConnected &&
+            serialRef.current.isReady
+          ) {
+            void routeCardToBin({
+              route: resolveRoute(matchedBin.binNumber),
+              sendRoute: serialRef.current.sendRoute,
+              t,
+              failedKey: "scannedCards.routingFailed",
+              cardName: card.name,
+              collectionGuid: collection.guid,
+              isAutoFeedEnabled,
+              disableAutoFeed,
+              pause,
+              triggerAutoFeed,
+            });
           }
         })
-        .catch((err) => console.error("Failed to persist card:", err));
-
-      if (
-        matchedBin &&
-        serialRef.current.isConnected &&
-        serialRef.current.isReady
-      ) {
-        serialRef.current
-          .sendRoute(resolveRoute(matchedBin.binNumber))
-          .then((response) => {
-            if (!response) {
-              toast.error(t("scannedCards.routingFailed.title"), {
-                description: t("scannedCards.routingFailed.description", {
-                  binNumber: matchedBin.binNumber,
-                }),
-              });
-              void reportSerialEvent({
-                command: "bin",
-                sent: true,
-                response: null,
-                cardName: card.name,
-                binNumber: matchedBin.binNumber,
-                collectionGuid: collection.guid,
-              });
-              autoFeedRef.current = false;
-              setAutoFeedState(false);
-              return;
-            }
-            const res = response as Record<string, unknown>;
-            if (res.empty) {
-              toast.error(t("scannedCards.feederEmpty.title"), {
-                description: t("scannedCards.feederEmpty.description"),
-                duration: Infinity,
-                dismissible: true,
-              });
-              void reportSerialEvent({
-                command: "bin",
-                sent: true,
-                response: res,
-                cardName: card.name,
-                binNumber: matchedBin.binNumber,
-                collectionGuid: collection.guid,
-              });
-              autoFeedRef.current = false;
-              setAutoFeedState(false);
-              pauseHookRef.current?.();
-              return;
-            }
-            if (res.error) {
-              toast.error(t("scannedCards.sorterError.title"), {
-                description: String(res.error),
-                duration: Infinity,
-                dismissible: true,
-              });
-              void reportSerialEvent({
-                command: "bin",
-                sent: true,
-                response: res,
-                cardName: card.name,
-                binNumber: matchedBin.binNumber,
-                collectionGuid: collection.guid,
-              });
-              autoFeedRef.current = false;
-              setAutoFeedState(false);
-              return;
-            }
-            if (autoFeedRef.current) {
-              triggerAutoFeed();
-            }
-          });
-      }
+        .catch((err) => console.error("Failed to persist card:", err))
+        .finally(() => {
+          if (billingQueryKey) {
+            void queryClient.invalidateQueries({ queryKey: billingQueryKey });
+          }
+        });
     },
-    [triggerAutoFeed, t],
+    [
+      t,
+      saveBinConfig,
+      queryClient,
+      resolveRoute,
+      resolveMatchedBin,
+      isAutoFeedEnabled,
+      disableAutoFeed,
+      pause,
+      triggerAutoFeed,
+    ],
   );
+
+  const resolveBinLimit = useCallback(async () => {
+    const bin = binLimitBin;
+    if (!bin) return;
+    try {
+      await emptyBin(bin.binNumber);
+    } catch (err) {
+      console.error("Failed to mark bin as emptied:", err);
+    } finally {
+      setBinLimitBin(null);
+    }
+  }, [binLimitBin, emptyBin]);
 
   const sendCatchAllBin = useCallback(() => {
     const catchAll = getCatchAllBin(binConfigsRef.current);
@@ -407,68 +425,56 @@ export function ScannedCardsProvider({
       serialRef.current.isConnected &&
       serialRef.current.isReady
     ) {
-      serialRef.current
-        .sendRoute(resolveRoute(catchAll.binNumber))
-        .then((response) => {
-          if (!response) {
-            toast.error(t("scannedCards.routingFailedCatchAll.title"), {
-              description: t("scannedCards.routingFailedCatchAll.description", {
-                binNumber: catchAll.binNumber,
-              }),
-            });
-            void reportSerialEvent({
-              command: "bin",
-              sent: true,
-              response: null,
-              binNumber: catchAll.binNumber,
-              collectionGuid: activeCollectionRef.current?.guid,
-            });
-            autoFeedRef.current = false;
-            setAutoFeedState(false);
-            return;
-          }
-          const res = response as Record<string, unknown>;
-          if (res.empty) {
-            toast.error(t("scannedCards.feederEmpty.title"), {
-              description: t("scannedCards.feederEmpty.description"),
-              duration: Infinity,
-              dismissible: true,
-            });
-            void reportSerialEvent({
-              command: "bin",
-              sent: true,
-              response: res,
-              binNumber: catchAll.binNumber,
-              collectionGuid: activeCollectionRef.current?.guid,
-            });
-            autoFeedRef.current = false;
-            setAutoFeedState(false);
-            pauseHookRef.current?.();
-            return;
-          }
-          if (res.error) {
-            toast.error(t("scannedCards.sorterError.title"), {
-              description: String(res.error),
-              duration: Infinity,
-              dismissible: true,
-            });
-            void reportSerialEvent({
-              command: "bin",
-              sent: true,
-              response: res,
-              binNumber: catchAll.binNumber,
-              collectionGuid: activeCollectionRef.current?.guid,
-            });
-            autoFeedRef.current = false;
-            setAutoFeedState(false);
-            return;
-          }
-          if (autoFeedRef.current) {
-            triggerAutoFeed();
-          }
-        });
+      void routeCardToBin({
+        route: resolveRoute(catchAll.binNumber),
+        sendRoute: serialRef.current.sendRoute,
+        t,
+        failedKey: "scannedCards.routingFailedCatchAll",
+        collectionGuid: activeCollectionRef.current?.guid,
+        isAutoFeedEnabled,
+        disableAutoFeed,
+        pause,
+        triggerAutoFeed,
+      });
     }
-  }, [triggerAutoFeed, t]);
+  }, [
+    t,
+    resolveRoute,
+    isAutoFeedEnabled,
+    disableAutoFeed,
+    pause,
+    triggerAutoFeed,
+  ]);
+
+  const addUnmatchedCard = useCallback((capturedImageUrl?: string) => {
+    const collection = activeCollectionRef.current;
+    if (!collection) return;
+
+    const record: UnmatchedCard = {
+      scanId: generateScanId(),
+      capturedImageUrl,
+      scannedAt: Date.now(),
+    };
+
+    setUnmatchedCards((prev) => [record, ...prev]);
+
+    addUnmatchedCardApi(collection.guid, record).catch((err) => {
+      console.error("Failed to persist unmatched card:", err);
+      setUnmatchedCards((prev) =>
+        prev.filter((c) => c.scanId !== record.scanId),
+      );
+    });
+  }, []);
+
+  const removeUnmatchedCard = useCallback((scanId: string) => {
+    const collection = activeCollectionRef.current;
+    setUnmatchedCards((prev) => prev.filter((c) => c.scanId !== scanId));
+    if (collection) {
+      removeUnmatchedCardApi(collection.guid, scanId).catch((err) =>
+        console.error("Failed to remove unmatched card:", err),
+      );
+    }
+  }, []);
 
   const removeCard = useCallback((scanId: string) => {
     const collection = activeCollectionRef.current;
@@ -491,44 +497,76 @@ export function ScannedCardsProvider({
     }
   }, []);
 
-  const correctCard = useCallback((scanId: string, card: PlayingCard) => {
-    const collection = activeCollectionRef.current;
-    const corrected: PlayingCardWithDistance = { ...card, distance: 0 };
-    const matchedBin = evaluateCardBin(
-      corrected,
-      binConfigsRef.current,
-      fieldDefinitionsRef.current,
-    );
-    setCards((prev) =>
-      prev.map((entry) =>
-        entry.scanId === scanId
-          ? { ...entry, card: corrected, binNumber: matchedBin?.binNumber }
-          : entry,
-      ),
-    );
-    if (collection) {
-      updateCollectionCard(
-        collection.guid,
-        scanId,
-        corrected,
-        matchedBin?.binNumber,
-      ).catch((err) => console.error("Failed to update card:", err));
-    }
-  }, []);
-
-  const toggleFoil = useCallback((scanId: string, isFoil: boolean) => {
-    const collection = activeCollectionRef.current;
-    setCards((prev) =>
-      prev.map((entry) =>
-        entry.scanId === scanId ? { ...entry, isFoil } : entry,
-      ),
-    );
-    if (collection) {
-      setCollectionCardFoil(collection.guid, scanId, isFoil).catch((err) =>
-        console.error("Failed to update foil status:", err),
+  const correctCard = useCallback(
+    (scanId: string, card: PlayingCard) => {
+      const collection = activeCollectionRef.current;
+      const corrected: PlayingCardWithDistance = { ...card, distance: 0 };
+      let matchedBin = resolveMatchedBin(corrected);
+      const autoTarget = selectedSetRef.current?.isRepackMode
+        ? null
+        : findAutoAssignTarget(
+            corrected,
+            binConfigsRef.current,
+            fieldDefinitionsRef.current,
+            autoAssignFieldRef.current,
+          );
+      if (autoTarget) {
+        binConfigsRef.current = binConfigsRef.current.map((c) =>
+          c.binNumber === autoTarget.binNumber
+            ? { ...c, rules: autoTarget.rules }
+            : c,
+        );
+        matchedBin = binConfigsRef.current.find(
+          (c) => c.binNumber === autoTarget.binNumber,
+        );
+        saveBinConfig(autoTarget.binNumber, autoTarget.rules);
+      }
+      setCards((prev) =>
+        prev.map((entry) =>
+          entry.scanId === scanId
+            ? {
+                ...entry,
+                card: corrected,
+                binNumber: matchedBin?.binNumber,
+                corrected: true,
+              }
+            : entry,
+        ),
       );
-    }
-  }, []);
+      if (collection) {
+        updateCollectionCard(
+          collection.guid,
+          scanId,
+          corrected,
+          matchedBin?.binNumber,
+        ).catch((err) => console.error("Failed to update card:", err));
+      }
+    },
+    [saveBinConfig, resolveMatchedBin],
+  );
+
+  const setCardFoilType = useCallback(
+    (scanId: string, foilType: string | null) => {
+      const collection = activeCollectionRef.current;
+      const isFoil = foilType != null;
+      setCards((prev) =>
+        prev.map((entry) =>
+          entry.scanId === scanId
+            ? { ...entry, isFoil, foilType: foilType ?? undefined }
+            : entry,
+        ),
+      );
+      if (collection) {
+        setCollectionCardFoilType(
+          collection.guid,
+          scanId,
+          isFoil,
+          foilType,
+        ).catch((err) => console.error("Failed to update foil status:", err));
+      }
+    },
+    [],
+  );
 
   const markDownloaded = useCallback((scanIds: string[]) => {
     const collection = activeCollectionRef.current;
@@ -562,19 +600,26 @@ export function ScannedCardsProvider({
     <ScannedCardsContext
       value={{
         cards,
+        unmatchedCards,
         isLoading,
         autoFeed,
+        forceFoilType,
         elapsedMs,
         isTimerActive,
         setAutoFeed,
+        setForceFoilType,
         registerCardArrivedHook,
         registerPauseHook,
         addCard,
+        addUnmatchedCard,
+        removeUnmatchedCard,
         sendCatchAllBin,
+        binLimitReached: binLimitBin,
+        resolveBinLimit,
         removeCard,
         removeCards,
         correctCard,
-        toggleFoil,
+        setCardFoilType,
         markDownloaded,
         clearCards,
       }}

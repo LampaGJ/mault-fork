@@ -9,6 +9,7 @@
     "noCollectionSelected": "Keine Sammlung ausgewählt",
     "noCollection": "Keine Sammlung",
     "noCollectionsYet": "Noch keine Sammlungen",
+    "noMatches": "Keine passenden Sammlungen",
     "manageCollections": "Sammlungen verwalten",
     "copyMonitorLink": "Überwachungslink kopieren",
     "giveUpSession": "Sitzung abgeben",
@@ -39,19 +40,25 @@
     "newCollection": "Neue Sammlung",
     "emptyTitle": "Noch keine Sammlungen",
     "emptyDescription": "Erstelle eine Sammlung, um mit dem Scannen von Karten zu beginnen",
+    "searchPlaceholder": "Sammlungen durchsuchen...",
+    "noSearchResultsTitle": "Keine passenden Sammlungen",
+    "noSearchResultsDescription": "Versuche einen anderen Suchbegriff",
     "cardCount_one": "{{count}} Karte",
     "cardCount_other": "{{count}} Karten",
     "noGame": "Kein Spiel",
     "setActiveCollection": "Als aktive Sammlung festlegen",
     "editSortingRules": "Sortierregeln bearbeiten",
-    "rename": "Umbenennen",
+    "edit": "Bearbeiten",
     "emptyCollection": "Sammlung leeren",
     "deleteCollection": "Sammlung löschen"
   },
-  "renameDialog": {
-    "title": "Sammlung umbenennen",
-    "description": "Gib einen neuen Namen für diese Sammlung ein.",
-    "submit": "Umbenennen"
+  "editDialog": {
+    "title": "Sammlung bearbeiten",
+    "description": "Aktualisiere den Namen und den Übereinstimmungsschwellenwert dieser Sammlung.",
+    "submit": "Speichern",
+    "matchThresholdLabel": "Mindestübereinstimmung (%)",
+    "matchThresholdPlaceholder": "Standard ({{default}} %)",
+    "matchThresholdHint": "Scans mit einer Übereinstimmung unter diesem Prozentsatz werden als keine Übereinstimmung behandelt, anstatt akzeptiert zu werden."
   },
   "deleteDialog": {
     "title": "Sammlung löschen",
@@ -64,7 +71,7 @@
   },
   "errors": {
     "createFailed": "Sammlung konnte nicht erstellt werden",
-    "renameFailed": "Sammlung konnte nicht umbenannt werden",
+    "renameFailed": "Sammlung konnte nicht aktualisiert werden",
     "deleteFailed": "Sammlung konnte nicht gelöscht werden",
     "emptyFailed": "Sammlung konnte nicht geleert werden"
   }

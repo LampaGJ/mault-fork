@@ -1,20 +1,21 @@
 import { billingQueryOptions } from "@/features/billing/api/billing";
+import { useDevice } from "@/features/calibration/api/use-device";
 import { searchByImage } from "@/features/cards/api/card";
 import { getCardById } from "@/features/cards/api/card-search";
 import { useCollections } from "@/features/collections/api/use-collections";
-import { orgSettingsQueryOptions } from "@/features/companies/api/org-settings";
 import { useOrg } from "@/features/companies/api/use-organization";
 import { useCameraContext } from "@/features/scanner/api/use-camera";
-import { SCANNABLE_STATUSES } from "@/features/scanner/constants";
 import {
   canvasToBlob,
   drawDetectionOverlay,
   extractCardImage,
   getDefaultCardContour,
 } from "@/features/scanner/lib/card-detection";
+import { CLOSE_MATCH_DELTA, SCANNABLE_STATUSES } from "@/lib/constants/scanner";
 import {
   DEFAULT_CAPTURE_SETTLE_DELAY_MS,
   DEFAULT_SCAN_REGION,
+  OCR_REGIONS_BY_GAME_KEY,
   type CardContour,
   type CardScannerProps,
   type PlayingCardWithDistance,
@@ -56,12 +57,11 @@ function playDingSound() {
   oscillator.stop(ctx.currentTime + 0.3);
 }
 
-const CLOSE_MATCH_DELTA = 0.05;
-
 async function searchCardImage(
   canvas: HTMLCanvasElement,
   contour?: CardContour | null,
   collectionGuid?: string,
+  ocrEnabled?: boolean,
 ): Promise<{
   card: PlayingCardWithDistance | null;
   alternativeMatches: PlayingCardWithDistance[];
@@ -73,6 +73,7 @@ async function searchCardImage(
   const formData = new FormData();
   formData.append("image", blob, "card.jpg");
   if (collectionGuid) formData.append("collectionGuid", collectionGuid);
+  formData.append("ocrEnabled", String(ocrEnabled ?? false));
 
   const { data } = await searchByImage(formData);
   if (!data || data.length === 0)
@@ -129,9 +130,7 @@ export function useCardScanner({
   } = useCameraContext();
   const { activeCollection } = useCollections();
   const { activeOrg } = useOrg();
-  const { data: orgSettingsData } = useQuery(
-    orgSettingsQueryOptions(activeOrg?.id),
-  );
+  const device = useDevice();
   const { data: billingData } = useQuery(billingQueryOptions(activeOrg?.id));
 
   const isAtScanLimit =
@@ -145,12 +144,12 @@ export function useCardScanner({
   rotatedRef.current = rotated;
 
   const scanRegion =
-    scanRegionProp ?? orgSettingsData?.scanRegion ?? DEFAULT_SCAN_REGION;
+    scanRegionProp ?? device?.scanRegion ?? DEFAULT_SCAN_REGION;
   const scanRegionRef = useRef(scanRegion);
   scanRegionRef.current = scanRegion;
 
   const captureSettleDelayMs =
-    orgSettingsData?.captureSettleDelayMs ?? DEFAULT_CAPTURE_SETTLE_DELAY_MS;
+    device?.captureSettleDelayMs ?? DEFAULT_CAPTURE_SETTLE_DELAY_MS;
   const captureSettleDelayMsRef = useRef(captureSettleDelayMs);
   captureSettleDelayMsRef.current = captureSettleDelayMs;
 
@@ -177,6 +176,15 @@ export function useCardScanner({
   const [debugImageUrl, setDebugImageUrl] = useState<string | null>(null);
   const debugImageUrlRef = useRef<string | null>(null);
   const [allowDuplicates, setAllowDuplicates] = useState(true);
+  // Games without a tuned OCR region (see OCR_REGIONS_BY_GAME_KEY) can't
+  // usefully run OCR at all - keep the toggle off and disabled for them
+  // rather than letting it silently do nothing.
+  const ocrSupported =
+    (OCR_REGIONS_BY_GAME_KEY[activeCollection?.game?.key ?? ""]?.length ?? 0) >
+    0;
+  const [ocrEnabled, setOcrEnabled] = useState(false);
+  const ocrEnabledRef = useRef(ocrEnabled && ocrSupported);
+  ocrEnabledRef.current = ocrEnabled && ocrSupported;
   const [hasPhonePhoto, setHasPhonePhoto] = useState(false);
 
   useEffect(() => {
@@ -243,6 +251,7 @@ export function useCardScanner({
             canvas,
             contour,
             activeCollectionGuidRef.current,
+            ocrEnabledRef.current,
           );
         setDebugImageUrl(debugImageUrl);
         debugImageUrlRef.current = debugImageUrl;
@@ -265,7 +274,7 @@ export function useCardScanner({
           }
         } else {
           playDingSound();
-          onNoMatchRef.current?.();
+          onNoMatchRef.current?.(debugImageUrl);
           updateStatus("no-match");
         }
       } catch (err) {
@@ -612,6 +621,9 @@ export function useCardScanner({
     selectCamera,
     allowDuplicates,
     setAllowDuplicates,
+    ocrEnabled: ocrEnabled && ocrSupported,
+    setOcrEnabled,
+    ocrSupported,
     cameraSource,
     phonePairingStatus,
     phonePairingUrl,

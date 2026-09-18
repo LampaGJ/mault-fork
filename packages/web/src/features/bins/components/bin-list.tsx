@@ -9,7 +9,11 @@ import { useTranslation } from "react-i18next";
 
 export function BinList() {
   const { t } = useTranslation("bins");
-  const { configs, selectedBin, setSelectedBin, hasCatchAll } = useBinConfigs();
+  const { configs, selectedBin, setSelectedBin, hasCatchAll, selectedSet } =
+    useBinConfigs();
+  const isAutoAssign = !!selectedSet?.autoAssignField;
+  const isScanOnly = !!selectedSet?.scanOnly;
+  const isRepackMode = !!selectedSet?.isRepackMode;
   const { activeOrg } = useOrg();
   const { isLoading } = useQuery({ ...binsQueryOptions, enabled: !!activeOrg });
 
@@ -29,13 +33,16 @@ export function BinList() {
   }
 
   return (
-    <div className="flex flex-col gap-2 overflow-y-auto">
+    <div className="flex flex-col gap-2 overflow-y-auto" data-tour="bin-list">
       <div className="flex flex-col gap-2">
         {configs.map((config) => (
           <BinCard
             key={config.binNumber}
             config={config}
             active={config.binNumber === selectedBin}
+            isAutoAssign={isAutoAssign}
+            isScanOnly={isScanOnly}
+            disabled={isRepackMode}
             onClick={() => setSelectedBin(config.binNumber)}
           />
         ))}

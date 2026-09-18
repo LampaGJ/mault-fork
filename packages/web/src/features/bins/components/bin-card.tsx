@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RuleSummary } from "@/features/bins/components/rule-summary";
-import type { BinCardProps } from "@/features/bins/types";
+import type { BinCardProps } from "@/lib/interfaces/bins";
 import { BinConfig, isRuleGroup } from "@magic-vault/shared";
 import { useTranslation } from "react-i18next";
 
@@ -17,7 +17,14 @@ function countConditions(config: BinConfig): number {
   return count(config.rules.conditions);
 }
 
-export function BinCard({ config, active, onClick }: BinCardProps) {
+export function BinCard({
+  config,
+  active,
+  isAutoAssign,
+  isScanOnly,
+  disabled,
+  onClick,
+}: BinCardProps) {
   const { t } = useTranslation("bins");
   const isEmpty = config.rules.conditions.length === 0;
   const conditionCount = countConditions(config);
@@ -26,6 +33,7 @@ export function BinCard({ config, active, onClick }: BinCardProps) {
     <Button
       variant={active ? "secondary" : "ghost"}
       className="h-auto p-2 flex flex-col justify-start text-start w-full"
+      disabled={disabled}
       onClick={onClick}
     >
       <div className="flex flex-row justify-between gap-2 items-center w-full">
@@ -34,6 +42,8 @@ export function BinCard({ config, active, onClick }: BinCardProps) {
         </p>
         {config.isCatchAll ? (
           <Badge variant="default">{t("binCard.catchAll")}</Badge>
+        ) : config.isOverride ? (
+          <Badge variant="outline">{t("binCard.override")}</Badge>
         ) : (
           !isEmpty && (
             <Badge variant="secondary">
@@ -48,7 +58,13 @@ export function BinCard({ config, active, onClick }: BinCardProps) {
             {t("binCard.allUnmatched")}
           </p>
         ) : isEmpty ? (
-          <p className="text-xs">{t("binCard.clickToConfigure")}</p>
+          <p className="text-xs">
+            {isScanOnly
+              ? t("binCard.scanOnlyDisabled")
+              : isAutoAssign
+                ? t("binCard.waitingForValue")
+                : t("binCard.clickToConfigure")}
+          </p>
         ) : (
           <RuleSummary rules={config.rules} />
         )}
