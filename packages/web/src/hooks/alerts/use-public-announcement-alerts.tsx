@@ -1,4 +1,4 @@
-import { activeAnnouncementsQueryOptions } from "@/features/announcements/api/announcements";
+import { publicAnnouncementsQueryOptions } from "@/features/announcements/api/announcements";
 import type { AppAlert } from "@/lib/interfaces/alerts";
 import { IconAlertTriangle, IconInfoCircle } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
@@ -9,8 +9,8 @@ const ICONS = {
   danger: IconAlertTriangle,
 };
 
-export function useAnnouncementAlerts(): AppAlert[] {
-  const { data } = useQuery(activeAnnouncementsQueryOptions);
+export function usePublicAnnouncementAlerts(): AppAlert[] {
+  const { data } = useQuery(publicAnnouncementsQueryOptions);
 
   return (data ?? []).map((announcement) => ({
     id: `announcement-${announcement.guid}`,
