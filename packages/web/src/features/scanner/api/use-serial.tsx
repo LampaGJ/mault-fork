@@ -182,6 +182,9 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
 
   const disconnect = useCallback(() => {
     const activeTransport = transportRef.current;
+    if (activeTransport) {
+      void reportSerialEvent({ command: "connect", sent: true, response: null, stage: "disconnected" });
+    }
 
     transportRef.current = null;
     writeQueueRef.current = Promise.resolve();
@@ -232,6 +235,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
 
       setIsConnected(true);
       setTransport(newTransport.kind);
+      void reportSerialEvent({ command: "connect", sent: true, response: null, stage: "connected" });
 
       (async () => {
         const bootLinePromise = waitForLine(5000);
@@ -246,12 +250,15 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
           if (parsed?.board === "esp32" || parsed?.board === "uno_r4") {
             setBoard(parsed.board);
           }
+          void reportSerialEvent({ command: "connect", sent: true, response: parsed, stage: "status" });
         } catch {}
         if (preTestHookRef.current) {
+          void reportSerialEvent({ command: "connect", sent: true, response: null, stage: "calibrating" });
           await preTestHookRef.current();
         }
         if (transportRef.current !== newTransport) return;
         toast.info(t("serial.testingDevice"));
+        void reportSerialEvent({ command: "test", sent: true, response: null, stage: "testing" });
         const { ok, error: testError } = await sendTest();
         if (transportRef.current !== newTransport) return;
         const copyAction = {
@@ -260,7 +267,9 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
         };
         if (ok) {
           toast.success(t("serial.deviceReady"), { action: copyAction });
+          void reportSerialEvent({ command: "test", sent: true, response: { status: "test_complete" }, stage: "ready" });
         } else {
+          void reportSerialEvent({ command: "test", sent: true, response: testError ? { error: testError } : null, stage: "test_failed" });
           toast.error(t("serial.deviceTestFailed.title"), {
             description: testError ?? t("serial.deviceTestFailed.description"),
             action: copyAction,
@@ -436,7 +445,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
           try {
             await previous();
           } catch (e) {
-            console.error("[Serial] Pre-test hook failed:", e); // eslint-disable-line no-console -- hardware debug trace
+            console.error("[Serial] Pre-test hook failed:", e);  
           }
           await fn();
         }
