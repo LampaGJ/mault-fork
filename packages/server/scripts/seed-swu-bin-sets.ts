@@ -75,17 +75,20 @@ const alpha = (...letters: string[]) => any(...letters.map((l) => cond("name", "
 const PRESETS: { name: string; bins: BinRuleGroup[]; binCount?: number }[] = [
   {
     // 1 blue (Vigilance), 2 green (Command), 3 red (Aggression), 4 yellow
-    // (Cunning), 5 Heroism, 6 Villainy, 7 neutral/none. Colour bins come first
-    // so a Heroism/Villainy + colour card lands on its colour; bins 5-6 then
-    // only see mono-Heroism/Villainy cards; no-aspect cards reach the catch-all.
+    // (Cunning), 5 Villainy, 6 Heroism, 7 neutral/none - the same order as
+    // swu-labels ASPECT_GROUP_ORDER (its transform.ts groups by aspects[0]).
+    // Colour bins come first so a Villainy/Heroism + colour card lands on its
+    // colour, which is what aspects[0] gives too since the API lists the colour
+    // first; bins 5-6 then only see mono-Villainy/Heroism cards; no-aspect
+    // cards reach the catch-all.
     name: "SWU · Aspect",
     bins: [
       all(cond("aspects", "contains_any", ["Vigilance"])),
       all(cond("aspects", "contains_any", ["Command"])),
       all(cond("aspects", "contains_any", ["Aggression"])),
       all(cond("aspects", "contains_any", ["Cunning"])),
-      all(cond("aspects", "contains_any", ["Heroism"])),
       all(cond("aspects", "contains_any", ["Villainy"])),
+      all(cond("aspects", "contains_any", ["Heroism"])),
     ],
   },
   {
