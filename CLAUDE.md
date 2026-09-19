@@ -81,6 +81,16 @@ This plan covers:
 
 Use `superpowers:subagent-driven-development` or `superpowers:executing-plans` to execute the plan task-by-task. See the plan file for complete details on each of the 10 tasks.
 
+## Troubleshooting "Testing card sorter connection…"
+
+That pill is a waiting state, not an error: it clears only when the device replies `{"status":"test_complete"}` to the app's `{"test":true}` (`packages/web/src/features/scanner/api/use-serial.tsx:413-415`). The failure reason is never shown in the pill, only in a toast and the Communication Log. Before touching hardware, copy that log and match the device's reply:
+
+- `module N sensor is blocked` or an unprompted `{"error":"jam"}`: module N's IR gate sensor reads LOW; clear the gate or the wiring on that pin (`firmware/main/main.ino:152`, `:201`).
+- `"reason":"NoMemory"` on `setConfig`: the board cannot parse the calibration. On a classic Uno R3 flash `firmware/build-uno-r3.sh`; stock firmware drops every calibration value silently.
+- No reply to `test` at all: the servo driver is unpowered or off the I2C bus, or the board reset mid-test.
+
+Full table, the serial commands to probe the board without the browser, and the R3 caveats: [docs/runbooks/sorter-connection-troubleshooting.md](docs/runbooks/sorter-connection-troubleshooting.md).
+
 ## Code style
 
 Don't write excessive comments — code should be self-documenting through clear naming and structure. Only add a comment when it explains something the code itself can't: a non-obvious constraint, a workaround for a specific external system's quirk, or an invariant that would surprise a reader. Don't restate what the code already makes obvious.
