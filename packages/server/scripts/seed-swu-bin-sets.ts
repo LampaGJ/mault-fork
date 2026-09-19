@@ -77,18 +77,18 @@ const PRESETS: { name: string; bins: BinRuleGroup[]; binCount?: number }[] = [
     // 1 blue (Vigilance), 2 green (Command), 3 red (Aggression), 4 yellow
     // (Cunning), 5 Villainy, 6 Heroism, 7 neutral/none - the same order as
     // swu-labels ASPECT_GROUP_ORDER (its transform.ts groups by aspects[0]).
-    // Colour bins come first so a Villainy/Heroism + colour card lands on its
-    // colour, which is what aspects[0] gives too since the API lists the colour
-    // first; bins 5-6 then only see mono-Villainy/Heroism cards; no-aspect
-    // cards reach the catch-all.
+    // Keyed on primary_aspect = the API's first-listed aspect, exactly like
+    // swu-labels (237 of 5,046 multi-aspect printings list Villainy/Heroism
+    // first, e.g. Doctor Pershing [Villainy, Vigilance], so a colour-first rule
+    // would disagree with the printed labels). No-aspect cards reach the catch-all.
     name: "SWU · Aspect",
     bins: [
-      all(cond("aspects", "contains_any", ["Vigilance"])),
-      all(cond("aspects", "contains_any", ["Command"])),
-      all(cond("aspects", "contains_any", ["Aggression"])),
-      all(cond("aspects", "contains_any", ["Cunning"])),
-      all(cond("aspects", "contains_any", ["Villainy"])),
-      all(cond("aspects", "contains_any", ["Heroism"])),
+      all(cond("primary_aspect", "equals", "Vigilance")),
+      all(cond("primary_aspect", "equals", "Command")),
+      all(cond("primary_aspect", "equals", "Aggression")),
+      all(cond("primary_aspect", "equals", "Cunning")),
+      all(cond("primary_aspect", "equals", "Villainy")),
+      all(cond("primary_aspect", "equals", "Heroism")),
     ],
   },
   {
