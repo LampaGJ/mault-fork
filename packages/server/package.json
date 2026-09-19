@@ -31,6 +31,7 @@
     "own-auth": "^0.3.12",
     "pg": "^8.16.3",
     "pg-copy-streams": "^7.0.0",
+    "pino": "^9",
     "resend": "^6.24.0",
     "rollbar": "^3.1.0",
     "stripe": "^22.6.1",

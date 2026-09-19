@@ -21,6 +21,7 @@ import { orgSettingsRouter } from "./routes/org-settings";
 import { publicRouter } from "./routes/public";
 import { streamRoute } from "./routes/stream";
 import { rollbar } from "./lib/rollbar";
+import { logger } from "./lib/logger";
 
 const app = new Hono<AppEnv>();
 const PORT = parseInt(process.env.PORT ?? "3001");
@@ -59,5 +60,5 @@ app.onError((err, c) => {
 });
 
 serve({ fetch: app.fetch, port: PORT, hostname: "0.0.0.0" }, () => {
-  console.log(`[server] Running on port:${PORT}`);
+  logger.info({ port: PORT }, `[server] Running on port:${PORT}`);
 });
