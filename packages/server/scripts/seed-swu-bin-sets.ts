@@ -81,7 +81,7 @@ const PRESETS: { name: string; bins: BinRuleGroup[]; binCount?: number }[] = [
     // swu-labels (237 of 5,046 multi-aspect printings list Villainy/Heroism
     // first, e.g. Doctor Pershing [Villainy, Vigilance], so a colour-first rule
     // would disagree with the printed labels). No-aspect cards reach the catch-all.
-    name: "SWU · Aspect",
+    name: "Aspect",
     bins: [
       all(cond("primary_aspect", "equals", "Vigilance")),
       all(cond("primary_aspect", "equals", "Command")),
@@ -92,7 +92,7 @@ const PRESETS: { name: string; bins: BinRuleGroup[]; binCount?: number }[] = [
     ],
   },
   {
-    name: "SWU · Set A (SOR–SEC)",
+    name: "Set A (SOR–SEC)",
     bins: [
       all(cond("set_code", "equals", "SOR")),
       all(cond("set_code", "equals", "SHD")),
@@ -104,7 +104,7 @@ const PRESETS: { name: string; bins: BinRuleGroup[]; binCount?: number }[] = [
   },
   {
     // Weekly Play, judge, convention and other promo codes reach the catch-all.
-    name: "SWU · Set B (LAW–HMW + promos)",
+    name: "Set B (LAW–HMW + promos)",
     bins: [
       all(cond("set_code", "equals", "LAW")),
       all(cond("set_code", "equals", "ASH")),
@@ -115,7 +115,7 @@ const PRESETS: { name: string; bins: BinRuleGroup[]; binCount?: number }[] = [
     ],
   },
   {
-    name: "SWU · Alpha",
+    name: "Alpha",
     bins: [
       alpha("a", "b", "c"),
       alpha("d", "e", "f"),
@@ -127,7 +127,7 @@ const PRESETS: { name: string; bins: BinRuleGroup[]; binCount?: number }[] = [
   },
   {
     // No-cost cards (leaders, bases, tokens) fall through to the catch-all.
-    name: "SWU · Cost",
+    name: "Cost",
     bins: [
       all(cond("cost", "lte", 1)),
       all(cond("cost", "equals", 2)),
@@ -139,7 +139,7 @@ const PRESETS: { name: string; bins: BinRuleGroup[]; binCount?: number }[] = [
   },
   {
     // Promos and printings with no variant record fall through.
-    name: "SWU · Variant",
+    name: "Variant",
     bins: [
       all(cond("variant", "equals", "Standard")),
       all(cond("variant", "equals", "Standard Foil")),
@@ -150,7 +150,7 @@ const PRESETS: { name: string; bins: BinRuleGroup[]; binCount?: number }[] = [
     ],
   },
   {
-    name: "SWU · Type",
+    name: "Type",
     bins: [
       all(cond("type_name", "equals", "Unit")),
       all(cond("type_name", "equals", "Event")),
@@ -161,7 +161,7 @@ const PRESETS: { name: string; bins: BinRuleGroup[]; binCount?: number }[] = [
     ],
   },
   {
-    name: "SWU · Rarity",
+    name: "Rarity",
     bins: [
       all(cond("rarity", "equals", "Common")),
       all(cond("rarity", "equals", "Uncommon")),
