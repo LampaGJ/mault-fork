@@ -294,12 +294,14 @@ void stopFeeder() {
   pwm.setPin(getFeederChannel(), 0);  // cut PWM signal entirely to stop 360° servo
 }
 
-// The last card in the hopper has nothing behind it to push it fully in, so
-// once the hopper's empty, keep the motor running settleDuration ms longer.
+// Keep the motor running settleDuration ms after module 1's sensor first
+// sees the card, every time - not only for the last card. Stopping on the
+// leading edge leaves the card half through the hopper gate and parked on
+// the sensor, which the jam detector then reports; on this sorter the next
+// card does not reliably push it the rest of the way in. Tune
+// settleDuration from the Calibration page (0 restores stop-on-detect).
 void settleAndStopFeeder() {
-  if (!hopperHasCards()) {
-    delay(feederConfig.settleDuration);
-  }
+  delay(feederConfig.settleDuration);
   stopFeeder();
 }
 
@@ -352,12 +354,10 @@ FeedResult runFeeder() {
 
     stopFeeder();
     if (digitalRead(irPin(1)) == LOW) {
-      // Motor's already off - only the last card (hopper now empty) needs an extra push to fully seat it.
-      if (!hopperHasCards()) {
-        setServoPosition(getFeederChannel(), feederConfig.speed);
-        delay(feederConfig.settleDuration);
-        stopFeeder();
-      }
+      // Detected between pulses with the motor already off: give the same
+      // overrun the in-pulse path gets, so the card seats fully in module 1.
+      setServoPosition(getFeederChannel(), feederConfig.speed);
+      settleAndStopFeeder();
       return FEED_DETECTED;
     }
     delay(feederConfig.pauseDuration);

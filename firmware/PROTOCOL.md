@@ -264,7 +264,7 @@ the feeder as a side effect. → `{"status":"ok"}`
 | `duration` | Overall timeout (ms) to detect a card before giving up |
 | `pulseDuration` | If `> 0`, run in pulsed mode: drive for this many ms, then check IR (`0` = continuous-drive mode instead) |
 | `pauseDuration` | Pause (ms) between pulses in pulsed mode |
-| `settleDuration` | Extra run time (ms) after detection, only when the hopper is now empty, so the last card (with nothing behind it) still fully clears into module 1 |
+| `settleDuration` | Extra run time (ms) after module 1's IR first sees the card, on every feed, so the card seats fully in module 1 instead of stopping half through the hopper gate on the sensor. `0` restores stop-on-detect. (Earlier firmware applied it only once the hopper was empty.) |
 
 ### `readIR`
 ```json
