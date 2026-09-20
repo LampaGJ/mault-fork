@@ -26,6 +26,16 @@ import { logger } from "./lib/logger";
 const app = new Hono<AppEnv>();
 const PORT = parseInt(process.env.PORT ?? "3001");
 
+const requestLog = logger.child({ module: "http" });
+app.use("*", async (c, next) => {
+  const started = Date.now();
+  await next();
+  requestLog.info(
+    { method: c.req.method, path: c.req.path, status: c.res.status, ms: Date.now() - started },
+    `${c.req.method} ${c.req.path} ${c.res.status}`,
+  );
+});
+
 app.use(
   cors({
     origin: getWebUrl(),
