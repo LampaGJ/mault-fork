@@ -266,6 +266,29 @@ the feeder as a side effect. → `{"status":"ok"}`
 | `pauseDuration` | Pause (ms) between pulses in pulsed mode |
 | `settleDuration` | Extra run time (ms) after module 1's IR first sees the card, on every feed, so the card seats fully in module 1 instead of stopping half through the hopper gate on the sensor. `0` restores stop-on-detect. (Earlier firmware applied it only once the hopper was empty.) |
 
+### `light`
+```json
+{"light": {"r": 255, "g": 214, "b": 170, "brightness": 100}}
+```
+All fields optional/partial, same merge behavior as `setConfig`. `r`/`g`/`b`
+and `brightness` are each clamped to 0-255, then `brightness` is capped at
+the compile-time `LIGHT_MAX_BRIGHTNESS` (160) so no command can push the
+6-LED strip past its power budget. → `{"status":"ok"}`
+
+```json
+{"light": false}
+```
+Turns the strip off (does not forget the last color/brightness — the next
+`{"light": {...}}` without those fields resumes at the prior values).
+→ `{"status":"ok"}`
+
+Boot default is warm white (255, 214, 170) at brightness 100, applied in
+`setup()` before the ready line, so the scan plate is lit without the app.
+
+AVR (Uno R3) builds only — the light bar's driver has no ESP32/R4 backend.
+On those boards, `light` (either form) → `{"error":"light unsupported on
+this board"}`.
+
 ### `readIR`
 ```json
 {"readIR": true}

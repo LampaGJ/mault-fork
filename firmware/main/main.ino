@@ -10,6 +10,18 @@
 #include <ArduinoJson.h>
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
+#if defined(ARDUINO_ARCH_AVR)
+// light_ws2812 (see firmware/main/light_ws2812.c) is not in the Arduino
+// Library Manager index and its repo has no library.properties, so it's
+// vendored into this sketch folder rather than `lib install`-ed. It's
+// AVR-only (raw AVR asm), unlike Adafruit_NeoPixel which this replaces -
+// NeoPixel's per-object heap allocation (18 B for 6 pixels) isn't visible
+// in the linker's "Global variables" line and left true headroom at 325 B,
+// the exact figure that has corrupted memory on this board before.
+// light_ws2812 drives a static `struct cRGB leds[LED_COUNT]` instead - no
+// heap, so its cost shows up honestly in that line.
+#include "light_ws2812.h"
+#endif
 
 #if defined(ARDUINO_ARCH_AVR)
 // Stack-style allocator over a static buffer; reset before each command.
@@ -153,6 +165,12 @@ const int IR_PINS[MAX_MODULES] = {2, 3, 4, 6, 7};
 #define IR_PIN_HOPPER 5
 #endif
 
+// LED data pin (D8 on AVR - see firmware/main/ws2812_config.h) isn't
+// configurable per-board here since light_ws2812 is AVR-only (see the
+// include guard above) - ESP32/R4 have no light hardware to wire it to.
+#define LED_COUNT 6
+#define LIGHT_MAX_BRIGHTNESS 160
+
 #define IR_TIMEOUT_MS 3000
 
 // If a card sits at a module this long with no route in progress, something's
@@ -167,6 +185,29 @@ const int IR_PINS[MAX_MODULES] = {2, 3, 4, 6, 7};
 // `FeedResult runFeeder();` would precede this and fail to compile
 // ("FeedResult does not name a type") if it were declared later instead.
 enum FeedResult { FEED_DETECTED, FEED_TIMEOUT, FEED_EMPTY };
+
+#if defined(ARDUINO_ARCH_AVR)
+struct LightConfig {
+  uint8_t r, g, b, brightness;
+  bool on;
+};
+LightConfig lightConfig = {255, 214, 170, 100, true};
+
+// Static, not heap - see the ARDUINO_ARCH_AVR include guard above for why.
+struct cRGB leds[LED_COUNT];
+
+void applyLight() {
+  uint8_t level = min((int)lightConfig.brightness, LIGHT_MAX_BRIGHTNESS);
+  for (int i = 0; i < LED_COUNT; i++) {
+    // light_ws2812 has no global brightness control (unlike NeoPixel's
+    // setBrightness) - scale each channel before writing instead.
+    leds[i].r = lightConfig.on ? (uint16_t)lightConfig.r * level / 255 : 0;
+    leds[i].g = lightConfig.on ? (uint16_t)lightConfig.g * level / 255 : 0;
+    leds[i].b = lightConfig.on ? (uint16_t)lightConfig.b * level / 255 : 0;
+  }
+  ws2812_setleds(leds, LED_COUNT);
+}
+#endif
 
 // Largest module number whose 3 channels, plus one feeder channel right
 // after it, still fit in channels [offset, 15].
@@ -857,6 +898,38 @@ void handleCommand(char* json, Print& reply) {
     return;
   }
 
+  // {"light": {"r":N,"g":N,"b":N,"brightness":N}} / {"light": false} — see
+  // PROTOCOL.md. Well under the arena's measured peak (see JsonArena above).
+  // AVR-only: light_ws2812 has no ESP32/R4 backend (see the
+  // ARDUINO_ARCH_AVR include guard near the top of this file). Keys use
+  // F() (unlike the rest of this function) to keep this command's RAM
+  // cost close to just LightConfig + leds[], not add its key strings to
+  // the pile of un-F()'d ones the rest of the file already keeps in RAM.
+#if defined(ARDUINO_ARCH_AVR)
+  if (doc[F("light")].is<bool>() && doc[F("light")].as<bool>() == false) {
+    lightConfig.on = false;
+    applyLight();
+    reply.println(F("{\"status\":\"ok\"}"));
+    return;
+  }
+  if (!doc[F("light")].isNull()) {
+    JsonObject cfg = doc[F("light")];
+    lightConfig.r = constrain((int)(cfg[F("r")] | lightConfig.r), 0, 255);
+    lightConfig.g = constrain((int)(cfg[F("g")] | lightConfig.g), 0, 255);
+    lightConfig.b = constrain((int)(cfg[F("b")] | lightConfig.b), 0, 255);
+    lightConfig.brightness = constrain((int)(cfg[F("brightness")] | lightConfig.brightness), 0, 255);
+    lightConfig.on = true;
+    applyLight();
+    reply.println(F("{\"status\":\"ok\"}"));
+    return;
+  }
+#else
+  if (doc[F("light")].is<bool>() || !doc[F("light")].isNull()) {
+    reply.println(F("{\"error\":\"light unsupported on this board\"}"));
+    return;
+  }
+#endif
+
   // {"readIR": true} — read current IR sensor state for all modules + hopper
   if (doc["readIR"].is<bool>() && doc["readIR"].as<bool>()) {
     reply.print(F("{\"status\":\"ok\",\"ir\":["));
@@ -926,6 +999,10 @@ void setup() {
 
 #if BLE_SUPPORTED
   bleInit();
+#endif
+
+#if defined(ARDUINO_ARCH_AVR)
+  applyLight();  // light_ws2812 is stateless per-call - no .begin() needed
 #endif
 
   char bootLine[96];
