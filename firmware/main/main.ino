@@ -188,10 +188,10 @@ enum FeedResult { FEED_DETECTED, FEED_TIMEOUT, FEED_EMPTY };
 
 #if defined(ARDUINO_ARCH_AVR)
 struct LightConfig {
-  uint8_t r, g, b, brightness;
+  uint8_t r, g, b, brightness, count;
   bool on;
 };
-LightConfig lightConfig = {255, 214, 170, 100, true};
+LightConfig lightConfig = {255, 214, 170, 100, LED_COUNT, true};
 
 // Static, not heap - see the ARDUINO_ARCH_AVR include guard above for why.
 struct cRGB leds[LED_COUNT];
@@ -201,9 +201,10 @@ void applyLight() {
   for (int i = 0; i < LED_COUNT; i++) {
     // light_ws2812 has no global brightness control (unlike NeoPixel's
     // setBrightness) - scale each channel before writing instead.
-    leds[i].r = lightConfig.on ? (uint16_t)lightConfig.r * level / 255 : 0;
-    leds[i].g = lightConfig.on ? (uint16_t)lightConfig.g * level / 255 : 0;
-    leds[i].b = lightConfig.on ? (uint16_t)lightConfig.b * level / 255 : 0;
+    bool lit = lightConfig.on && i < lightConfig.count;
+    leds[i].r = lit ? (uint16_t)lightConfig.r * level / 255 : 0;
+    leds[i].g = lit ? (uint16_t)lightConfig.g * level / 255 : 0;
+    leds[i].b = lit ? (uint16_t)lightConfig.b * level / 255 : 0;
   }
   ws2812_setleds(leds, LED_COUNT);
 }
@@ -918,6 +919,7 @@ void handleCommand(char* json, Print& reply) {
     lightConfig.g = constrain((int)(cfg[F("g")] | lightConfig.g), 0, 255);
     lightConfig.b = constrain((int)(cfg[F("b")] | lightConfig.b), 0, 255);
     lightConfig.brightness = constrain((int)(cfg[F("brightness")] | lightConfig.brightness), 0, 255);
+    lightConfig.count = constrain((int)(cfg[F("count")] | lightConfig.count), 0, LED_COUNT);
     lightConfig.on = true;
     applyLight();
     reply.println(F("{\"status\":\"ok\"}"));

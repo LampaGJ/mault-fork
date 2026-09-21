@@ -268,12 +268,14 @@ the feeder as a side effect. → `{"status":"ok"}`
 
 ### `light`
 ```json
-{"light": {"r": 255, "g": 214, "b": 170, "brightness": 100}}
+{"light": {"r": 255, "g": 214, "b": 170, "brightness": 100, "count": 6}}
 ```
 All fields optional/partial, same merge behavior as `setConfig`. `r`/`g`/`b`
 and `brightness` are each clamped to 0-255, then `brightness` is capped at
 the compile-time `LIGHT_MAX_BRIGHTNESS` (160) so no command can push the
-6-LED strip past its power budget. → `{"status":"ok"}`
+6-LED strip past its power budget. `count` (default 6, the full strip) is
+clamped to 0-6 and lights only the first `count` pixels — useful for finding
+where a strip's data chain breaks (`light 1..N` and watch). → `{"status":"ok"}`
 
 ```json
 {"light": false}
