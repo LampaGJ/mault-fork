@@ -339,6 +339,48 @@ export function CardScanner({ className, compact }: CardScannerProps) {
 
   useEffect(() => () => registerIsland(null), [registerIsland]);
 
+  useEffect(() => {
+    if (!window.__mault) return;
+    const canForceScan =
+      status === "no-match" || status === "scanning" || status === "captured";
+    window.__mault.scanner = {
+      state: () => ({
+        status,
+        autoFeed,
+        canForceScan,
+        isConnected,
+        isReady,
+        scanningBlocked,
+      }),
+      scanNow: handleForceScanClick,
+      pause: handlePause,
+      resume: handleResume,
+      feed: handleFeed,
+      clearDevice: handleClearDevice,
+      setAutoFeed,
+      toggleAutoFeed: () => {
+        const next = !autoFeed;
+        setAutoFeed(next);
+        return next;
+      },
+    };
+    return () => {
+      delete window.__mault?.scanner;
+    };
+  }, [
+    status,
+    autoFeed,
+    isConnected,
+    isReady,
+    scanningBlocked,
+    handleForceScanClick,
+    handlePause,
+    handleResume,
+    handleFeed,
+    handleClearDevice,
+    setAutoFeed,
+  ]);
+
   const canScan = isCameraActive;
   const wasReadyRef = useRef(canScan);
   useEffect(() => {
