@@ -498,6 +498,50 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     [sendCommand, waitForLine],
   );
 
+  useEffect(() => {
+    const bridge: MaultBridge = {
+      version: 1,
+      isConnected,
+      isReady,
+      firmwareVersion,
+      board,
+      transport,
+      last: null,
+      async command(json, timeoutMs) {
+        const sent = await sendCommandWithNewline(json);
+        const response = sent ? await receiveResponse(timeoutMs ?? 10000) : "";
+        bridge.last = { command: json, response: response || null, at: new Date().toISOString() };
+        return { sent, response: response || null };
+      },
+      async test() {
+        const result = await sendTest();
+        return { ok: result.ok, error: result.error ?? undefined };
+      },
+      async route(module, direction, binNumber) {
+        if (isRouteBusy()) {
+          bridge.last = { command: "route", response: "busy", at: new Date().toISOString() };
+          return null;
+        }
+        return sendRoute({ binNumber: binNumber ?? 0, module, direction });
+      },
+    };
+    window.__mault = bridge;
+    return () => {
+      delete window.__mault;
+    };
+  }, [
+    isConnected,
+    isReady,
+    firmwareVersion,
+    board,
+    transport,
+    sendCommandWithNewline,
+    receiveResponse,
+    sendTest,
+    sendRoute,
+    isRouteBusy,
+  ]);
+
   return (
     <SerialContext
       value={{
