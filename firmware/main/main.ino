@@ -190,21 +190,25 @@ enum FeedResult { FEED_DETECTED, FEED_TIMEOUT, FEED_EMPTY };
 struct LightConfig {
   uint8_t r, g, b, brightness, count;
   bool on;
+  uint8_t level[LED_COUNT];  // per-pixel percent (0-100), independent of brightness
 };
-LightConfig lightConfig = {255, 214, 170, 100, LED_COUNT, true};
+LightConfig lightConfig = {255, 180, 107, 100, LED_COUNT, true, {100, 100, 100, 100, 100, 100}};
 
 // Static, not heap - see the ARDUINO_ARCH_AVR include guard above for why.
 struct cRGB leds[LED_COUNT];
 
 void applyLight() {
-  uint8_t level = min((int)lightConfig.brightness, LIGHT_MAX_BRIGHTNESS);
+  uint8_t capBrightness = min((int)lightConfig.brightness, LIGHT_MAX_BRIGHTNESS);
   for (int i = 0; i < LED_COUNT; i++) {
     // light_ws2812 has no global brightness control (unlike NeoPixel's
-    // setBrightness) - scale each channel before writing instead.
+    // setBrightness) - scale each channel before writing instead. Chained
+    // through uint32_t (not uint16_t) since r/g/b * capBrightness alone can
+    // reach 255*160 = 40800, past a 16-bit intermediate before the /255.
     bool lit = lightConfig.on && i < lightConfig.count;
-    leds[i].r = lit ? (uint16_t)lightConfig.r * level / 255 : 0;
-    leds[i].g = lit ? (uint16_t)lightConfig.g * level / 255 : 0;
-    leds[i].b = lit ? (uint16_t)lightConfig.b * level / 255 : 0;
+    uint8_t lvl = lightConfig.level[i];
+    leds[i].r = lit ? (uint32_t)lightConfig.r * capBrightness / 255 * lvl / 100 : 0;
+    leds[i].g = lit ? (uint32_t)lightConfig.g * capBrightness / 255 * lvl / 100 : 0;
+    leds[i].b = lit ? (uint32_t)lightConfig.b * capBrightness / 255 * lvl / 100 : 0;
   }
   ws2812_setleds(leds, LED_COUNT);
 }
@@ -920,6 +924,18 @@ void handleCommand(char* json, Print& reply) {
     lightConfig.b = constrain((int)(cfg[F("b")] | lightConfig.b), 0, 255);
     lightConfig.brightness = constrain((int)(cfg[F("brightness")] | lightConfig.brightness), 0, 255);
     lightConfig.count = constrain((int)(cfg[F("count")] | lightConfig.count), 0, LED_COUNT);
+    // pixels: up to LED_COUNT ints, percent 0-100; a shorter array only
+    // touches its leading pixels, the rest keep their prior level. 6 small
+    // ints adds well under 100 bytes of arena nodes - trivial next to the
+    // 432-byte arena already sized for the 10-field setConfig command.
+    JsonVariant pixels = cfg[F("pixels")];
+    if (pixels.is<JsonArray>()) {
+      JsonArray arr = pixels.as<JsonArray>();
+      int n = arr.size() < LED_COUNT ? arr.size() : LED_COUNT;
+      for (int i = 0; i < n; i++) {
+        lightConfig.level[i] = constrain((int)arr[i].as<int>(), 0, 100);
+      }
+    }
     lightConfig.on = true;
     applyLight();
     reply.println(F("{\"status\":\"ok\"}"));

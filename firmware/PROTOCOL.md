@@ -268,7 +268,7 @@ the feeder as a side effect. → `{"status":"ok"}`
 
 ### `light`
 ```json
-{"light": {"r": 255, "g": 214, "b": 170, "brightness": 100, "count": 6}}
+{"light": {"r": 255, "g": 180, "b": 107, "brightness": 100, "count": 6}}
 ```
 All fields optional/partial, same merge behavior as `setConfig`. `r`/`g`/`b`
 and `brightness` are each clamped to 0-255, then `brightness` is capped at
@@ -278,14 +278,25 @@ clamped to 0-6 and lights only the first `count` pixels — useful for finding
 where a strip's data chain breaks (`light 1..N` and watch). → `{"status":"ok"}`
 
 ```json
-{"light": false}
+{"light": {"pixels": [5, 5, 50, 50, 5, 5]}}
 ```
-Turns the strip off (does not forget the last color/brightness — the next
-`{"light": {...}}` without those fields resumes at the prior values).
+`pixels` sets a per-pixel brightness level, 0-100%, on top of `r`/`g`/`b`/
+`brightness`/`count` — each pixel's output is color × brightness × its own
+`level` / 100. Up to 6 entries, one per pixel from index 0; a shorter array
+only touches its leading pixels and leaves the rest at their prior level; a
+non-array value is ignored. Defaults to 100 (full) on every pixel at boot.
 → `{"status":"ok"}`
 
-Boot default is warm white (255, 214, 170) at brightness 100, applied in
-`setup()` before the ready line, so the scan plate is lit without the app.
+```json
+{"light": false}
+```
+Turns the strip off (does not forget the last color/brightness/pixel levels —
+the next `{"light": {...}}` without those fields resumes at the prior
+values). → `{"status":"ok"}`
+
+Boot default is warm white (255, 180, 107, about 2700K) at brightness 100,
+applied in `setup()` before the ready line, so the scan plate is lit without
+the app.
 
 AVR (Uno R3) builds only — the light bar's driver has no ESP32/R4 backend.
 On those boards, `light` (either form) → `{"error":"light unsupported on
