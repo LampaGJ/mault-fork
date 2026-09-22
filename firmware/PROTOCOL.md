@@ -296,9 +296,10 @@ Turns the strip off (does not forget the last color/brightness/pixel levels —
 the next `{"light": {...}}` without those fields resumes at the prior
 values). → `{"status":"ok"}`
 
-Boot default is warm white (255, 180, 107, about 2700K) at brightness 100,
-applied in `setup()` before the ready line, so the scan plate is lit without
-the app.
+Boot default is warm white (255, 180, 107, about 2700K) at the brightness cap
+with per-pixel levels `5,5,50,50,5,5` (the two centre pixels carry the light,
+the outer four fill shadows), applied in `setup()` before the ready line, so
+the scan plate is lit without the app.
 
 AVR (Uno R3) builds only — the light bar's driver has no ESP32/R4 backend.
 On those boards, `light` (either form) → `{"error":"light unsupported on
