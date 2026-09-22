@@ -91,7 +91,7 @@ JsonArena jsonArena;
 // Upstream base 2.0.13 plus this fork's revision (feeder overrun, light bar,
 // count, per-pixel levels). Bump the suffix on every firmware change so
 // getStatus identifies the build actually on the board.
-#define FIRMWARE_VERSION "2.0.13-swu.10"
+#define FIRMWARE_VERSION "2.0.13-swu.11"
 
 // Reported in getStatus/boot so the app knows how (or whether) it can
 // update the device - only the ESP32 build can be reflashed from the
@@ -198,11 +198,11 @@ struct LightConfig {
   bool on;
   uint8_t level[LED_COUNT];  // per-pixel percent (0-100), independent of brightness
 };
-// Boot default tuned on the real scan plate: the outer pairs carry the light
-// from the sides, the centre pair stays low, so the camera sees no hot spot.
+// Boot default tuned on the real scan plate: low overall, the outer pairs a
+// touch above the centre pair, so the camera sees an even plate with no hot spot.
 LightConfig lightConfig = {
   {{255, 180, 107}, {255, 180, 107}, {255, 180, 107}},
-  LIGHT_MAX_BRIGHTNESS, LED_COUNT, true, {30, 30, 5, 5, 30, 30}
+  LIGHT_MAX_BRIGHTNESS, LED_COUNT, true, {10, 10, 5, 5, 10, 10}
 };
 
 // Static, not heap - see the ARDUINO_ARCH_AVR include guard above for why.
