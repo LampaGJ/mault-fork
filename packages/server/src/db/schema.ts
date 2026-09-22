@@ -42,6 +42,9 @@ export const cardImageVectors = pgTable(
     name: text("name").notNull(),
     setCode: text("set_code").notNull(),
     embedding: vector("embedding").notNull(),
+    embeddingArt: vector("embedding_art"),
+    embeddingName: vector("embedding_name"),
+    embeddingBottom: vector("embedding_bottom"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -98,6 +101,8 @@ export const announcements = pgTable(
     severity: text("severity").notNull().default("info"),
     message: text("message").notNull(),
     isActive: boolean("is_active").notNull().default(true),
+    showOnLanding: boolean("show_on_landing").notNull().default(false),
+    link: text("link"),
     startsAt: timestamp("starts_at"),
     endsAt: timestamp("ends_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -558,6 +563,16 @@ export const platformUserRoles = pgTable("platform_user_roles", {
   userId: text("user_id").primaryKey(),
   role: text("role").notNull().default("user"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Admin-only telemetry: how many card searches vectorized on the server
+// (search-by-image) vs. on the client via WebGPU (search-by-vector). Not
+// RLS-protected or org-scoped - only ever read/written by the server via
+// `db`, exposed through /admin/scan-vectorize-stats for operators to check.
+export const scanVectorizeStats = pgTable("scan_vectorize_stats", {
+  source: text("source").primaryKey(), // "server" | "webgpu"
+  count: integer("count").notNull().default(0),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 

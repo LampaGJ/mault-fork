@@ -4,6 +4,7 @@ import {
 } from "@/features/calibration/api/feeder-config";
 import { useDevice } from "@/features/calibration/api/use-device";
 import { useSerial } from "@/features/scanner/api/use-serial";
+import { FEEDER_PREVIEW_STOP_MS } from "@/lib/constants/timing";
 import {
   DEFAULT_FEEDER_CALIBRATION,
   type FeederCalibration,
@@ -14,6 +15,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
 } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -43,7 +45,7 @@ export function FeederConfigProvider({
   useEffect(() => {
     return registerPreTestHook(async () => {
       if (!device) return;
-      const fresh = await queryClient.fetchQuery(queryOpts);
+      const fresh = await queryClient.fetchQuery(feederQueryOptions(device.guid));
       const p = receiveResponse();
       await sendCommand(JSON.stringify({ setFeederConfig: fresh }));
       const response = await p;
@@ -57,12 +59,12 @@ export function FeederConfigProvider({
       } catch {
         toast.error(t("useFeederConfig.toasts.notSynced"), {
           description: response
-            ? t("useFeederConfig.toasts.unexpectedResponse", { response })
-            : t("useFeederConfig.toasts.noResponse"),
+            ? t("toasts.unexpectedResponse", { response })
+            : t("toasts.noResponse"),
         });
       }
     });
-  }, [registerPreTestHook, queryClient, queryOpts, sendCommand, receiveResponse, device, t]);
+  }, [registerPreTestHook, queryClient, sendCommand, receiveResponse, device, t]);
 
   const saveConfigMutation = useMutation({
     mutationFn: (calibration: FeederCalibration) =>
@@ -99,12 +101,30 @@ export function FeederConfigProvider({
     [saveConfigMutation, device],
   );
 
+  const previewStopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
   const previewSpeed = useCallback(
     (value: number) => {
       sendCommand(JSON.stringify({ feederValue: value }));
+      if (previewStopTimeoutRef.current) {
+        clearTimeout(previewStopTimeoutRef.current);
+      }
+      previewStopTimeoutRef.current = setTimeout(() => {
+        sendCommand(JSON.stringify({ feederStop: true }));
+      }, FEEDER_PREVIEW_STOP_MS);
     },
     [sendCommand],
   );
+
+  useEffect(() => {
+    return () => {
+      if (previewStopTimeoutRef.current) {
+        clearTimeout(previewStopTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <FeederConfigContext value={{ feederConfig, saveConfig, previewSpeed }}>

@@ -3,15 +3,17 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { healthQueryOptions } from "@/features/health/api/health";
+import { useHealthQuery } from "@/features/health/api/health";
 import { useCameraContext } from "@/features/scanner/api/use-camera";
 import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
 import { useSerial } from "@/features/scanner/api/use-serial";
 import { useRole } from "@/hooks/use-role";
 import { useSyncState } from "@/lib/app-stream";
-import { useQuery } from "@tanstack/react-query";
+import { LATEST_FIRMWARE_VERSION } from "@/lib/constants/firmware";
+import { isFirmwareVersionOutdated } from "@magic-vault/shared";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 export function FooterDivider() {
   return <span className="h-3 w-px bg-border shrink-0" />;
@@ -37,14 +39,21 @@ function StatusItem({
   label,
   dot,
   tooltip,
+  onClick,
 }: {
   label: string;
   dot: "success" | "warning" | "error" | "muted";
   tooltip: string;
+  onClick?: () => void;
 }) {
   return (
     <Tooltip>
-      <TooltipTrigger className="flex items-center gap-1.5 cursor-default">
+      <TooltipTrigger
+        onClick={onClick}
+        className={`flex items-center gap-1.5 transition-colors ${
+          onClick ? "cursor-pointer hover:text-foreground" : "cursor-default"
+        }`}
+      >
         <StatusDot variant={dot} />
         <span className="text-xs text-muted-foreground">{label}</span>
       </TooltipTrigger>
@@ -64,7 +73,9 @@ function SyncStatusItem() {
   const done = processed + skipped;
 
   const visible =
-    status !== "idle" && status !== "cancelled" && pathname !== "/app/admin";
+    status !== "idle" &&
+    status !== "cancelled" &&
+    pathname !== "/app/admin/cards";
   if (!visible) return null;
 
   const dot =
@@ -98,7 +109,7 @@ function SyncStatusItem() {
   return (
     <Tooltip>
       <TooltipTrigger
-        onClick={isAdmin ? () => navigate("/app/admin") : undefined}
+        onClick={isAdmin ? () => navigate("/app/admin/cards") : undefined}
         className={`flex items-center gap-1.5 transition-colors min-w-0 ${
           isAdmin ? "cursor-pointer hover:text-foreground" : "cursor-default"
         }`}
@@ -122,7 +133,7 @@ function HealthStatusItem() {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { data } = useQuery(healthQueryOptions);
+  const { data } = useHealthQuery();
 
   if (pathname === "/app/health") return null;
 
@@ -158,8 +169,38 @@ function HealthStatusItem() {
 export function StatusFooter() {
   const { t } = useTranslation("common");
   const { status: cameraStatus } = useCameraContext();
-  const { isConnected, isReady, firmwareVersion } = useSerial();
+  const { isConnected, isReady, firmwareVersion, checkFirmwareVersion } =
+    useSerial();
   const { cards } = useScannedCards();
+
+  const handleCheckFirmware = async () => {
+    const toastId = toast.loading(t("statusFooter.firmwareChecking"));
+    const result = await checkFirmwareVersion();
+    if (result.status === "ok") {
+      if (isFirmwareVersionOutdated(result.version, LATEST_FIRMWARE_VERSION)) {
+        toast.warning(
+          t("statusFooter.firmwareOutdated", {
+            version: result.version,
+            latest: LATEST_FIRMWARE_VERSION,
+          }),
+          { id: toastId },
+        );
+      } else {
+        toast.success(
+          t("statusFooter.firmwareUpToDate", { version: result.version }),
+          { id: toastId },
+        );
+      }
+      return;
+    }
+    const message = {
+      noVersion: t("statusFooter.firmwareNoVersion"),
+      noResponse: t("statusFooter.firmwareNoResponse"),
+      busy: t("statusFooter.firmwareBusy"),
+      disconnected: t("statusFooter.sorterDisconnected"),
+    }[result.status];
+    toast.error(message, { id: toastId });
+  };
 
   const totalValue = cards.reduce(
     (sum, { card, isFoil }) =>
@@ -206,7 +247,12 @@ export function StatusFooter() {
           dot={cameraDot}
           tooltip={cameraTooltip}
         />
-        <StatusItem label={deviceLabel} dot={deviceDot} tooltip={deviceTooltip} />
+        <StatusItem
+          label={deviceLabel}
+          dot={deviceDot}
+          tooltip={deviceTooltip}
+          onClick={isConnected ? handleCheckFirmware : undefined}
+        />
         <SyncStatusItem />
         <HealthStatusItem />
       </div>

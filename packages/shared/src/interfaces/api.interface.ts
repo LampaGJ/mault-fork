@@ -23,10 +23,12 @@ export interface SyncState {
   status: SyncStatus;
   gameKey: string;
   lang: string;
+  forceResync: boolean;
   total: number;
   processed: number;
   skipped: number;
   errors: number;
+  queued: number;
   startedAt: string | null;
   logs: string[];
   currentCard?: string;

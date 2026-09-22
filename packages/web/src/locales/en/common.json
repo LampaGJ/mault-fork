@@ -52,6 +52,12 @@
     "sorterReady": "Sorter ready",
     "sorterReadyWithVersion": "Sorter ready (firmware v{{version}})",
     "sorterWithVersion": "Sorter v{{version}}",
+    "firmwareChecking": "Checking sorter firmware…",
+    "firmwareUpToDate": "Sorter firmware v{{version}} is up to date",
+    "firmwareOutdated": "Sorter is on firmware v{{version}}, older than the latest v{{latest}}",
+    "firmwareNoVersion": "The sorter didn't report a firmware version. Re-upload the latest firmware.",
+    "firmwareNoResponse": "The sorter didn't respond. Try reconnecting.",
+    "firmwareBusy": "The sorter is busy. Try again in a moment.",
     "syncProgress": "Sync {{done}}/{{total}}",
     "syncStatus": "Sync {{status}}",
     "syncing": "Syncing card image vectors…",
@@ -95,11 +101,20 @@
     "save": "Save",
     "create": "Create"
   },
+  "unsavedChanges": {
+    "message": "You have unsaved changes",
+    "discard": "Discard",
+    "save": "Save",
+    "saving": "Saving…",
+    "leaveTitle": "Discard unsaved changes?",
+    "leaveDescription": "You have unsaved changes. If you leave now, they'll be lost.",
+    "keepEditing": "Keep editing",
+    "discardAndLeave": "Discard changes"
+  },
   "auditDrawer": {
     "noHistory": "No history yet.",
     "current": "current",
     "confirm": "Confirm",
-    "cancel": "Cancel",
     "revert": "Revert"
   },
   "loadingGate": {
@@ -107,14 +122,12 @@
   },
   "notFound": {
     "title": "Page not found",
-    "description": "The page you're looking for doesn't exist or has been moved.",
-    "backHome": "Back to home"
+    "description": "The page you're looking for doesn't exist or has been moved."
   },
   "errorPage": {
     "title": "Something went wrong",
     "description": "An unexpected error occurred. Try reloading the page.",
-    "reload": "Reload page",
-    "backHome": "Back to home"
+    "reload": "Reload page"
   },
   "footer": {
     "donate": "Donate",
@@ -133,5 +146,6 @@
     "signIn": "Sign in",
     "getStarted": "Get started",
     "openApp": "Open app"
-  }
+  },
+  "backHome": "Back to home"
 }

@@ -22,13 +22,18 @@ export async function listSyncSources(): Promise<{
   return apiGet<{ success: boolean; data: SyncSourceInfo[] }>("/api/admin/sync/sources");
 }
 
-export async function startSync(gameKey: string, lang: string = "en"): Promise<{
+export async function startSync(
+  gameKey: string,
+  lang: string = "en",
+  forceResync: boolean = false,
+): Promise<{
   success: boolean;
   data: SyncState;
 }> {
   return apiPost<{ success: boolean; data: SyncState }>("/api/admin/sync", {
     gameKey,
     lang,
+    forceResync,
   });
 }
 
@@ -127,5 +132,14 @@ export async function testServerRollbar(): Promise<{
 }> {
   return apiPost<{ success: boolean; message: string }>(
     "/api/admin/rollbar/test",
+  );
+}
+
+export async function getScanVectorizeStats(): Promise<{
+  success: boolean;
+  data: { server: number; webgpu: number };
+}> {
+  return apiGet<{ success: boolean; data: { server: number; webgpu: number } }>(
+    "/api/admin/scan-vectorize-stats",
   );
 }

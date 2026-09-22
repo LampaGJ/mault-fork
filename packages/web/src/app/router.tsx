@@ -30,8 +30,27 @@ const AppLayout = lazy(() => import("@/app/routes/app/layout"));
 const ScannerPage = lazy(() => import("@/app/routes/app/index"));
 const CollectionsPage = lazy(() => import("@/app/routes/app/collections"));
 const BinsPage = lazy(() => import("@/app/routes/app/bins"));
-const CalibratePage = lazy(() => import("@/app/routes/app/calibrate"));
-const AdminPage = lazy(() => import("@/app/routes/app/admin"));
+const CalibrateLayout = lazy(() => import("@/app/routes/app/calibrate/layout"));
+const CalibrateModulesPage = lazy(
+  () => import("@/app/routes/app/calibrate/modules"),
+);
+const CalibrateScanRegionPage = lazy(
+  () => import("@/app/routes/app/calibrate/scan-region"),
+);
+const CalibrateCalibrationPage = lazy(
+  () => import("@/app/routes/app/calibrate/calibration"),
+);
+const AdminLayout = lazy(() => import("@/app/routes/app/admin/layout"));
+const AdminCardsPage = lazy(() => import("@/app/routes/app/admin/cards"));
+const AdminGamesPage = lazy(() => import("@/app/routes/app/admin/games"));
+const AdminUsersPage = lazy(() => import("@/app/routes/app/admin/users"));
+const AdminAnnouncementsPage = lazy(
+  () => import("@/app/routes/app/admin/announcements"),
+);
+const AdminServosPage = lazy(() => import("@/app/routes/app/admin/servos"));
+const AdminDeveloperPage = lazy(
+  () => import("@/app/routes/app/admin/developer"),
+);
 const MonitorSessionsPage = lazy(
   () => import("@/app/routes/app/monitor-sessions"),
 );
@@ -143,6 +162,10 @@ export const router = createBrowserRouter([
                         element: <ScannerPage />,
                       },
                       {
+                        path: "/app/cards/:scanId",
+                        element: <ScannerPage />,
+                      },
+                      {
                         path: "/app/collections",
                         element: <CollectionsPage />,
                       },
@@ -152,7 +175,25 @@ export const router = createBrowserRouter([
                       },
                       {
                         path: "/app/calibrate",
-                        element: <CalibratePage />,
+                        element: <CalibrateLayout />,
+                        children: [
+                          {
+                            index: true,
+                            element: <Navigate to="modules" replace />,
+                          },
+                          {
+                            path: "modules",
+                            element: <CalibrateModulesPage />,
+                          },
+                          {
+                            path: "scan-region",
+                            element: <CalibrateScanRegionPage />,
+                          },
+                          {
+                            path: "calibration",
+                            element: <CalibrateCalibrationPage />,
+                          },
+                        ],
                       },
                     ],
                   },
@@ -161,7 +202,37 @@ export const router = createBrowserRouter([
                     children: [
                       {
                         path: "/app/admin",
-                        element: <AdminPage />,
+                        element: <AdminLayout />,
+                        children: [
+                          {
+                            index: true,
+                            element: <Navigate to="cards" replace />,
+                          },
+                          {
+                            path: "cards",
+                            element: <AdminCardsPage />,
+                          },
+                          {
+                            path: "games",
+                            element: <AdminGamesPage />,
+                          },
+                          {
+                            path: "users",
+                            element: <AdminUsersPage />,
+                          },
+                          {
+                            path: "announcements",
+                            element: <AdminAnnouncementsPage />,
+                          },
+                          {
+                            path: "servos",
+                            element: <AdminServosPage />,
+                          },
+                          {
+                            path: "developer",
+                            element: <AdminDeveloperPage />,
+                          },
+                        ],
                       },
                     ],
                   },

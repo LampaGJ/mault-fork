@@ -24,10 +24,9 @@ export function optionalBadgeLabel(
   t: TFunction<"build">,
   optional: Step["optional"],
 ): string {
-  if (optional === "classic-hopper")
-    return t("assembly.optionalClassicHopperBadge");
-  if (optional === "new-hopper") return t("assembly.optionalNewHopperBadge");
-  return t("assembly.optionalBadge");
+  if (optional === "classic-hopper") return t("optionalClassicHopperBadge");
+  if (optional === "new-hopper") return t("optionalNewHopperBadge");
+  return t("optionalBadge");
 }
 
 export interface Phase {
@@ -230,7 +229,7 @@ export function buildPhases(
       key: "assemble-modules",
       title: t("assembly.phases.assembleModules.title"),
       icon: IconTool,
-      videos: ["https://youtu.be/sCH3U6oM2xk", "https://youtu.be/nFxPrAMkSPc"],
+      videos: ["https://youtu.be/sCH3U6oM2xk", "https://youtu.be/JoBkcryvFWo"],
       steps: [
         {
           key: "mount-module-servos",
