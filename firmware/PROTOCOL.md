@@ -318,7 +318,7 @@ the next `{"light": {...}}` without those fields resumes at the prior
 values). → `{"status":"ok"}`
 
 Boot default is warm white (255, 180, 107, about 2700K) at the brightness cap
-with per-pixel levels `5,5,50,50,5,5` (the two centre pixels carry the light,
+with per-pixel levels `5,5,20,20,5,5` (the two centre pixels carry the light,
 the outer four fill shadows), applied in `setup()` before the ready line, so
 the scan plate is lit without the app.
 
