@@ -91,7 +91,7 @@ JsonArena jsonArena;
 // Upstream base 2.0.13 plus this fork's revision (feeder overrun, light bar,
 // count, per-pixel levels). Bump the suffix on every firmware change so
 // getStatus identifies the build actually on the board.
-#define FIRMWARE_VERSION "2.0.13-swu.8"
+#define FIRMWARE_VERSION "2.0.13-swu.9"
 
 // Reported in getStatus/boot so the app knows how (or whether) it can
 // update the device - only the ESP32 build can be reflashed from the
@@ -193,13 +193,17 @@ enum FeedResult { FEED_DETECTED, FEED_TIMEOUT, FEED_EMPTY };
 
 #if defined(ARDUINO_ARCH_AVR)
 struct LightConfig {
-  uint8_t r, g, b, brightness, count;
+  uint8_t rgb[3][3];  // group -> {r,g,b}; group 0 = pixels 0-1, 1 = 2-3, 2 = 4-5
+  uint8_t brightness, count;
   bool on;
   uint8_t level[LED_COUNT];  // per-pixel percent (0-100), independent of brightness
 };
 // Boot default tuned on the real scan plate: the two centre pixels carry the
 // light, the outer four only fill shadows, so the camera sees no hot spot.
-LightConfig lightConfig = {255, 180, 107, LIGHT_MAX_BRIGHTNESS, LED_COUNT, true, {5, 5, 20, 20, 5, 5}};
+LightConfig lightConfig = {
+  {{255, 180, 107}, {255, 180, 107}, {255, 180, 107}},
+  LIGHT_MAX_BRIGHTNESS, LED_COUNT, true, {5, 5, 20, 20, 5, 5}
+};
 
 // Static, not heap - see the ARDUINO_ARCH_AVR include guard above for why.
 struct cRGB leds[LED_COUNT];
@@ -213,9 +217,10 @@ void applyLight() {
     // reach 255*160 = 40800, past a 16-bit intermediate before the /255.
     bool lit = lightConfig.on && i < lightConfig.count;
     uint8_t lvl = lightConfig.level[i];
-    leds[i].r = lit ? (uint32_t)lightConfig.r * capBrightness / 255 * lvl / 100 : 0;
-    leds[i].g = lit ? (uint32_t)lightConfig.g * capBrightness / 255 * lvl / 100 : 0;
-    leds[i].b = lit ? (uint32_t)lightConfig.b * capBrightness / 255 * lvl / 100 : 0;
+    uint8_t* rgb = lightConfig.rgb[i / 2];
+    leds[i].r = lit ? (uint32_t)rgb[0] * capBrightness / 255 * lvl / 100 : 0;
+    leds[i].g = lit ? (uint32_t)rgb[1] * capBrightness / 255 * lvl / 100 : 0;
+    leds[i].b = lit ? (uint32_t)rgb[2] * capBrightness / 255 * lvl / 100 : 0;
   }
   ws2812_setleds(leds, LED_COUNT);
 }
@@ -959,8 +964,9 @@ void handleCommand(char* json, Print& reply) {
     return;
   }
 
-  // {"light": {"r":N,"g":N,"b":N,"brightness":N}} / {"light": false} — see
-  // PROTOCOL.md. Well under the arena's measured peak (see JsonArena above).
+  // {"light": {"r":N,"g":N,"b":N,"brightness":N,"group":0-2|"left"|"middle"|"right","level":0-100}}
+  // / {"light": false} — see PROTOCOL.md. Well under the arena's measured
+  // peak (see JsonArena above).
   // AVR-only: light_ws2812 has no ESP32/R4 backend (see the
   // ARDUINO_ARCH_AVR include guard near the top of this file). Keys use
   // F() (unlike the rest of this function) to keep this command's RAM
@@ -975,9 +981,46 @@ void handleCommand(char* json, Print& reply) {
   }
   if (!doc[F("light")].isNull()) {
     JsonObject cfg = doc[F("light")];
-    lightConfig.r = constrain((int)(cfg[F("r")] | lightConfig.r), 0, 255);
-    lightConfig.g = constrain((int)(cfg[F("g")] | lightConfig.g), 0, 255);
-    lightConfig.b = constrain((int)(cfg[F("b")] | lightConfig.b), 0, 255);
+    // group: 0-2 or "left"/"middle"/"right" - scopes r/g/b (and level) to one
+    // pixel pair instead of all three. Absent group keeps the prior
+    // all-groups behaviour for r/g/b.
+    JsonVariant groupField = cfg[F("group")];
+    bool hasGroup = !groupField.isNull();
+    int groupIdx = 0;
+    if (hasGroup) {
+      if (groupField.is<int>()) {
+        groupIdx = groupField.as<int>();
+      } else {
+        const char* g = groupField.as<const char*>();
+        if (strcmp_P(g, PSTR("left")) == 0) groupIdx = 0;
+        else if (strcmp_P(g, PSTR("middle")) == 0) groupIdx = 1;
+        else if (strcmp_P(g, PSTR("right")) == 0) groupIdx = 2;
+        else groupIdx = -1;
+      }
+      if (groupIdx < 0 || groupIdx > 2) {
+        reply.println(F("{\"error\":\"group must be 0 to 2 or left, middle, right\"}"));
+        return;
+      }
+    }
+    if (hasGroup) {
+      uint8_t* rgb = lightConfig.rgb[groupIdx];
+      rgb[0] = constrain((int)(cfg[F("r")] | rgb[0]), 0, 255);
+      rgb[1] = constrain((int)(cfg[F("g")] | rgb[1]), 0, 255);
+      rgb[2] = constrain((int)(cfg[F("b")] | rgb[2]), 0, 255);
+      int level = cfg[F("level")] | -1;
+      if (level >= 0) {
+        uint8_t lv = constrain(level, 0, 100);
+        lightConfig.level[groupIdx * 2] = lv;
+        lightConfig.level[groupIdx * 2 + 1] = lv;
+      }
+    } else {
+      for (int i = 0; i < 3; i++) {
+        uint8_t* rgb = lightConfig.rgb[i];
+        rgb[0] = constrain((int)(cfg[F("r")] | rgb[0]), 0, 255);
+        rgb[1] = constrain((int)(cfg[F("g")] | rgb[1]), 0, 255);
+        rgb[2] = constrain((int)(cfg[F("b")] | rgb[2]), 0, 255);
+      }
+    }
     lightConfig.brightness = constrain((int)(cfg[F("brightness")] | lightConfig.brightness), 0, 255);
     lightConfig.count = constrain((int)(cfg[F("count")] | lightConfig.count), 0, LED_COUNT);
     // levels: up to LED_COUNT comma-separated percents (0-100) in one

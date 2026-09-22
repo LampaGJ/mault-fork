@@ -296,7 +296,26 @@ and `brightness` are each clamped to 0-255, then `brightness` is capped at
 the compile-time `LIGHT_MAX_BRIGHTNESS` (160) so no command can push the
 6-LED strip past its power budget. `count` (default 6, the full strip) is
 clamped to 0-6 and lights only the first `count` pixels — useful for finding
-where a strip's data chain breaks (`light 1..N` and watch). → `{"status":"ok"}`
+where a strip's data chain breaks (`light 1..N` and watch). Without `group`,
+`r`/`g`/`b` set all three colour groups at once (below). → `{"status":"ok"}`
+
+```json
+{"light": {"group": "middle", "r": 255, "g": 209, "b": 163, "level": 40}}
+```
+The strip's 6 pixels are three independently-coloured groups of two:
+
+| `group` | Pixels | Alias |
+|---|---|---|
+| `0` | 0-1 | `"left"` |
+| `1` | 2-3 | `"middle"` |
+| `2` | 4-5 | `"right"` |
+
+When `group` (a number 0-2 or one of the aliases above) is present, `r`/`g`/`b`
+(if given) set only that group's colour, and `level` (0-100, if given) sets
+both of that group's pixels in `levels` (below) to the same value. `count`
+and `brightness` stay global regardless of `group`. An out-of-range number or
+an unrecognized alias changes nothing and replies
+`{"error":"group must be 0 to 2 or left, middle, right"}`.
 
 ```json
 {"light": {"levels": "5,5,50,50,5,5"}}
@@ -317,10 +336,22 @@ Turns the strip off (does not forget the last color/brightness/pixel levels —
 the next `{"light": {...}}` without those fields resumes at the prior
 values). → `{"status":"ok"}`
 
-Boot default is warm white (255, 180, 107, about 2700K) at the brightness cap
-with per-pixel levels `5,5,20,20,5,5` (the two centre pixels carry the light,
-the outer four fill shadows), applied in `setup()` before the ready line, so
-the scan plate is lit without the app.
+Boot default is soft white (255, 180, 107, about 3000K) on all three groups
+at the brightness cap with per-pixel levels `5,5,20,20,5,5` (the two centre
+pixels carry the light, the outer four fill shadows), applied in `setup()`
+before the ready line, so the scan plate is lit without the app.
+
+Reference colour-temperature table (RGB tuned for WS2812 white balance;
+shared with the panel UI that drives this command):
+
+| Label | Temperature | `r`,`g`,`b` |
+|---|---|---|
+| Warm White | 2700 K | 255, 169, 87 |
+| Soft White | 3000 K | 255, 180, 107 |
+| Bright White | 3500 K | 255, 196, 137 |
+| Cool White | 4000 K | 255, 209, 163 |
+| Daylight | 5000 K | 255, 228, 206 |
+| Daylight | 6500 K | 255, 254, 250 |
 
 AVR (Uno R3) builds only — the light bar's driver has no ESP32/R4 backend.
 On those boards, `light` (either form) → `{"error":"light unsupported on
