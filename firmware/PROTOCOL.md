@@ -337,8 +337,8 @@ the next `{"light": {...}}` without those fields resumes at the prior
 values). → `{"status":"ok"}`
 
 Boot default is soft white (255, 180, 107, about 3000K) on all three groups
-at the brightness cap with per-pixel levels `5,5,20,20,5,5` (the two centre
-pixels carry the light, the outer four fill shadows), applied in `setup()`
+at the brightness cap with per-pixel levels `30,30,5,5,30,30` (the outer
+pairs carry the light from the sides, the centre pair stays low), applied in `setup()`
 before the ready line, so the scan plate is lit without the app.
 
 Reference colour-temperature table (RGB tuned for WS2812 white balance;
