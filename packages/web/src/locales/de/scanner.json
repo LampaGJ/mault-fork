@@ -300,8 +300,5 @@
     "title": "Fach {{number}} ist voll",
     "description": "Fach {{number}} hat sein Limit von {{limit}} Karten erreicht. Entferne die Karten aus dem Fach und setze das Scannen dann fort.",
     "continueButton": "Ich habe das Fach geleert, weiter"
-  },
-  "lightBrightnessSlider": {
-    "label": "Lichthelligkeit"
   }
 }

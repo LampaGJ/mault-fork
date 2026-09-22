@@ -12,7 +12,6 @@ import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
 import { useRegisterScannerIsland } from "@/features/scanner/api/use-scanner-island";
 import { useSerial, useSerialMessage } from "@/features/scanner/api/use-serial";
 import { BinLimitDialog } from "@/features/scanner/components/bin-limit-dialog";
-import { LightBrightnessSlider } from "@/features/scanner/components/light-brightness-slider";
 import { ScannerMenu } from "@/features/scanner/components/scanner-menu";
 import { ScannerOverlay } from "@/features/scanner/components/scanner-overlay";
 import { useIsMobile } from "@/hooks/use-is-mobile";
@@ -403,7 +402,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     >
       <div
         className={cn(
-          "relative overflow-hidden bg-background w-full h-full max-w-full rounded-lg border order-2 md:order-1",
+          "relative overflow-hidden bg-background w-full h-full max-w-full rounded-lg border",
           !compact && "md:aspect-[2.5/3.5]",
         )}
       >
@@ -487,7 +486,6 @@ export function CardScanner({ className, compact }: CardScannerProps) {
           onOcrEnabledChange={setOcrEnabled}
         />
       </div>
-      <LightBrightnessSlider className="order-1 md:order-2" />
       <BinLimitDialog
         bin={binLimitReached}
         onContinue={handleContinueAfterBinLimit}

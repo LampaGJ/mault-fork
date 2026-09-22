@@ -300,8 +300,5 @@
     "title": "Le bac {{number}} est plein",
     "description": "Le bac {{number}} a atteint sa limite de {{limit}} cartes. Retirez les cartes du bac, puis continuez le scan.",
     "continueButton": "J'ai vidé le bac, continuer"
-  },
-  "lightBrightnessSlider": {
-    "label": "Luminosité de l'éclairage"
   }
 }

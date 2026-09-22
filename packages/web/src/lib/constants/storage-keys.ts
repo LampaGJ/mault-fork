@@ -28,5 +28,3 @@ export const LANGUAGE_STORAGE_KEY = "language";
 export const DISMISSED_ALERTS_STORAGE_KEY = "magic-vault:dismissed-alerts";
 
 export const CARD_VIEW_MODE_STORAGE_KEY = "magic-vault:card-view-mode";
-
-export const LIGHT_BRIGHTNESS_STORAGE_KEY_PREFIX = "mault.lightBrightness";
