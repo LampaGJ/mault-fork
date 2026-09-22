@@ -278,14 +278,16 @@ clamped to 0-6 and lights only the first `count` pixels — useful for finding
 where a strip's data chain breaks (`light 1..N` and watch). → `{"status":"ok"}`
 
 ```json
-{"light": {"pixels": [5, 5, 50, 50, 5, 5]}}
+{"light": {"levels": "5,5,50,50,5,5"}}
 ```
-`pixels` sets a per-pixel brightness level, 0-100%, on top of `r`/`g`/`b`/
+`levels` sets a per-pixel brightness level, 0-100%, on top of `r`/`g`/`b`/
 `brightness`/`count` — each pixel's output is color × brightness × its own
-`level` / 100. Up to 6 entries, one per pixel from index 0; a shorter array
-only touches its leading pixels and leaves the rest at their prior level; a
-non-array value is ignored. Defaults to 100 (full) on every pixel at boot.
-→ `{"status":"ok"}`
+`level` / 100. Up to 6 comma-separated integers, one per pixel from index 0;
+fewer than 6 only touches those leading pixels and leaves the rest at their
+prior level; a non-string value is ignored. It's a string rather than a JSON
+array because an array's per-element pool nodes overflow the Uno R3's fixed
+432-byte JSON arena (see `JsonArena` in `main.ino`). Defaults to 100 (full)
+on every pixel at boot. → `{"status":"ok"}`
 
 ```json
 {"light": false}

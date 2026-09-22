@@ -8,6 +8,8 @@
 #define ARDUINOJSON_POOL_CAPACITY 8
 #endif
 #include <ArduinoJson.h>
+#include <stdlib.h>
+#include <string.h>
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
 #if defined(ARDUINO_ARCH_AVR)
@@ -89,7 +91,7 @@ JsonArena jsonArena;
 // Upstream base plus this fork's revision (feeder overrun, light bar, count,
 // per-pixel levels). Bump the suffix on every firmware change so getStatus
 // identifies the build actually on the board.
-#define FIRMWARE_VERSION "2.0.12-swu.4"
+#define FIRMWARE_VERSION "2.0.12-swu.5"
 
 // Reported in getStatus/boot so the app knows how (or whether) it can
 // update the device - only the ESP32 build can be reflashed from the
@@ -927,16 +929,24 @@ void handleCommand(char* json, Print& reply) {
     lightConfig.b = constrain((int)(cfg[F("b")] | lightConfig.b), 0, 255);
     lightConfig.brightness = constrain((int)(cfg[F("brightness")] | lightConfig.brightness), 0, 255);
     lightConfig.count = constrain((int)(cfg[F("count")] | lightConfig.count), 0, LED_COUNT);
-    // pixels: up to LED_COUNT ints, percent 0-100; a shorter array only
-    // touches its leading pixels, the rest keep their prior level. 6 small
-    // ints adds well under 100 bytes of arena nodes - trivial next to the
-    // 432-byte arena already sized for the 10-field setConfig command.
-    JsonVariant pixels = cfg[F("pixels")];
-    if (pixels.is<JsonArray>()) {
-      JsonArray arr = pixels.as<JsonArray>();
-      int n = arr.size() < LED_COUNT ? arr.size() : LED_COUNT;
-      for (int i = 0; i < n; i++) {
-        lightConfig.level[i] = constrain((int)arr[i].as<int>(), 0, 100);
+    // levels: up to LED_COUNT comma-separated percents (0-100) in one
+    // string, e.g. "5,5,50,50,5,5" - a shorter list only touches its
+    // leading pixels, the rest keep their prior level. A JsonArray here
+    // costs a pool node per element on top of the string itself, which
+    // overflows the fixed 432-byte arena (see JsonArena above); a single
+    // string field does not.
+    JsonVariant levels = cfg[F("levels")];
+    if (levels.is<const char*>()) {
+      char buf[32];
+      strncpy(buf, levels.as<const char*>(), sizeof(buf) - 1);
+      buf[sizeof(buf) - 1] = '\0';
+      char* p = buf;
+      for (int i = 0; i < LED_COUNT && p && *p; i++) {
+        char* end;
+        long v = strtol(p, &end, 10);
+        if (end == p) break;
+        lightConfig.level[i] = constrain((int)v, 0, 100);
+        p = (*end == ',') ? end + 1 : end;
       }
     }
     lightConfig.on = true;
