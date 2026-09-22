@@ -244,8 +244,12 @@ used. → `{"status":"ok","module":1}`
 ```json
 {"feeder": true}
 ```
-Runs the feed sequence until module 1's IR sensor detects a card, the
-hopper is found empty, or it times out.
+Runs the feed sequence until module 1's IR sensor detects a card or it
+times out. `empty` is reported only after a full `duration` attempt: the
+hopper sensor is debounced (never trusted on a single read) and checked
+both before the attempt starts and again once it times out — a timeout
+counts as empty only if both of those reads found no cards, otherwise it's
+a plain timeout (jam).
 → `{"status":"ok","detected":true,"empty":false}`,
 or on failure a `{"error":"...","empty":true|false}` shape (see Errors below).
 
@@ -403,8 +407,8 @@ is present. `hopper` is `true` while cards remain in the feeder stack.
 | `{"error":"servo must be bottom, paddle, or pusher"}` | invalid `servo` field |
 | `{"error":"invalid position"}` | `position` not valid for that servo type |
 | `{"error":"direction must be left, right, or bottom"}` | invalid `direction` in `route` |
-| `{"error":"empty: feeder hopper is out of cards","empty":true}` | feed attempted with no cards in the hopper |
-| `{"error":"timeout: feeder did not deliver card to module 1","empty":false}` | feeder ran its full configured `duration` without module 1's IR triggering |
+| `{"error":"empty: feeder hopper is out of cards","empty":true}` | feeder ran its full configured `duration` and the debounced hopper sensor read empty both before the attempt started and after it timed out |
+| `{"error":"timeout: feeder did not deliver card to module 1","empty":false}` | feeder ran its full configured `duration` without module 1's IR triggering, and the hopper wasn't confirmed empty both before and after (a jam, not an empty hopper) |
 | `{"error":"timeout: no card detected at module N"}` | during routing, a card didn't advance to module *N* in time (3s, plus one paddle-flap retry and another 3s) |
 | `{"error":"invalid JSON","reason":"...","length":N,"received":"..."}` | line didn't parse as JSON |
 | `{"error":"command too long"}` | line exceeded 200 characters |

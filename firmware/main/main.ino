@@ -91,7 +91,7 @@ JsonArena jsonArena;
 // Upstream base 2.0.13 plus this fork's revision (feeder overrun, light bar,
 // count, per-pixel levels). Bump the suffix on every firmware change so
 // getStatus identifies the build actually on the board.
-#define FIRMWARE_VERSION "2.0.13-swu.11"
+#define FIRMWARE_VERSION "2.0.13-swu.12"
 
 // Reported in getStatus/boot so the app knows how (or whether) it can
 // update the device - only the ESP32 build can be reflashed from the
@@ -238,7 +238,12 @@ int irPin(int module) {
 }
 
 bool hopperHasCards() {
-  return digitalRead(IR_PIN_HOPPER) == LOW;
+  // The hopper sensor's contact has read empty for single samples mid-run.
+  for (int i = 0; i < 5; i++) {
+    if (digitalRead(IR_PIN_HOPPER) == LOW) return true;
+    if (i < 4) delay(4);
+  }
+  return false;
 }
 
 bool waitForCard(int module, int timeoutMs = IR_TIMEOUT_MS) {
@@ -364,24 +369,21 @@ void settleAndStopFeeder() {
 }
 
 // Pulses the feeder, polling module 1's IR between pulses (continuous if
-// pulseDuration is 0). Returns FEED_EMPTY only if the hopper was already
-// empty AND no card is waiting at module 1 - once feeding starts, the
-// hopper going empty just means this is the last card and must not abort
-// the feed. routeCard() also calls this again as a presence check right
-// before routing, so module 1 must be checked before the hopper check, or
-// the last card (hopper already empty by then) gets misreported as absent.
+// pulseDuration is 0). Runs the full feed attempt (the whole `duration`
+// window) regardless of what the hopper sensor reads at the start - a
+// false-empty sample from the hopper sensor must not cut the attempt short.
+// Returns FEED_EMPTY only if the hopper already read empty before the
+// attempt started AND still reads empty once the attempt times out; a
+// timeout with the hopper reading cards is FEED_TIMEOUT (a jam), never
+// FEED_EMPTY. routeCard() also calls this again as a presence check right
+// before routing, so module 1 must be checked before anything else, or the
+// last card (hopper already empty by then) gets misreported as absent.
 FeedResult runFeeder() {
   unsigned long start = millis();
 
   if (digitalRead(irPin(1)) == LOW) return FEED_DETECTED;
 
-  if (!hopperHasCards()) {
-    setServoPosition(getFeederChannel(), feederConfig.speed);
-    delay(feederConfig.pulseDuration > 0 ? feederConfig.pulseDuration : 200);
-    stopFeeder();
-    if (digitalRead(irPin(1)) == LOW) return FEED_DETECTED;
-    if (!hopperHasCards()) return FEED_EMPTY;
-  }
+  bool hopperEmptyAtStart = !hopperHasCards();
 
   if (feederConfig.pulseDuration <= 0) {
     setServoPosition(getFeederChannel(), feederConfig.speed);
@@ -393,7 +395,7 @@ FeedResult runFeeder() {
       delay(2);
     }
     stopFeeder();
-    return FEED_TIMEOUT;
+    return (hopperEmptyAtStart && !hopperHasCards()) ? FEED_EMPTY : FEED_TIMEOUT;
   }
 
   while (millis() - start < (unsigned long)feederConfig.duration) {
@@ -420,7 +422,7 @@ FeedResult runFeeder() {
     }
     delay(feederConfig.pauseDuration);
   }
-  return FEED_TIMEOUT;
+  return (hopperEmptyAtStart && !hopperHasCards()) ? FEED_EMPTY : FEED_TIMEOUT;
 }
 
 // Flaps a module's paddle open/closed a few times to try to jostle a stuck
