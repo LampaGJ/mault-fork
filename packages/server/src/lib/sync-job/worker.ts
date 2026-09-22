@@ -17,8 +17,26 @@ function errorMessage(err: unknown): string {
   return cause ? `${err.message} — ${cause}` : err.message;
 }
 
+// process.send() only queues a message on the IPC channel; the event loop
+// flushes it, and process.exit() discards whatever is still queued. A run
+// that skips every card never yields to the event loop (the skip path is
+// pure microtask work), so the terminal patchState and thousands of progress
+// messages behind it are dropped on exit and the parent reports a spurious
+// "exited unexpectedly".
+let lastSendFlushed: Promise<void> = Promise.resolve();
+
 function send(msg: WorkerToParentMessage): void {
-  process.send?.(msg);
+  if (!process.send) return;
+  lastSendFlushed = new Promise<void>((resolve) => {
+    process.send?.(msg, undefined, undefined, () => resolve());
+  });
+}
+
+function exitAfterFlush(code: number): void {
+  void lastSendFlushed.then(
+    () => process.exit(code),
+    () => process.exit(code),
+  );
 }
 
 let state: SyncState | null = null;
@@ -364,13 +382,13 @@ process.on("message", (msg: ParentToWorkerMessage) => {
 
     beginRun();
     runSync(source, msg.lang, msg.forceResync)
-      .then(() => process.exit(0))
+      .then(() => exitAfterFlush(0))
       .catch((err) => {
         patchState({ status: "failed" });
         const errMsg = errorMessage(err);
         addLog(`Fatal error: ${errMsg}`);
         emitEvent("error", { message: errMsg });
-        process.exit(1);
+        exitAfterFlush(1);
       });
   }
 });
