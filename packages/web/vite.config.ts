@@ -21,6 +21,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    allowedHosts: [".ts.net"],
     proxy: {
       "/api": {
         target: "http://localhost:3001",
