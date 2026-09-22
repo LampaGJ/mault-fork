@@ -471,7 +471,7 @@ void checkModuleJams() {
     if (!moduleJamAlerted[i] && presentFor > MODULE_JAM_TIMEOUT_MS) {
       moduleJamAlerted[i] = true;
       char line[40];
-      snprintf(line, sizeof(line), "{\"error\":\"jam\",\"module\":%d}", m);
+      snprintf_P(line, sizeof(line), PSTR("{\"error\":\"jam\",\"module\":%d}"), m);
       broadcastLine(line);
     }
   }
@@ -519,25 +519,25 @@ void setAllNeutral() {
 int getPositionPulse(int module, int servoOffset, const char* position) {
   ModuleConfig& c = moduleConfig[module - 1];
   if (servoOffset == 0) {
-    if (strcmp(position, "open") == 0)   return c.bottomOpen;
+    if (strcmp_P(position, PSTR("open")) == 0)   return c.bottomOpen;
     return c.bottomClosed;
   }
   if (servoOffset == 1) {
-    if (strcmp(position, "open") == 0)   return c.paddleOpen;
+    if (strcmp_P(position, PSTR("open")) == 0)   return c.paddleOpen;
     return c.paddleClosed;
   }
   if (servoOffset == 2) {
-    if (strcmp(position, "left") == 0)   return c.pusherLeft;
-    if (strcmp(position, "right") == 0)  return c.pusherRight;
+    if (strcmp_P(position, PSTR("left")) == 0)   return c.pusherLeft;
+    if (strcmp_P(position, PSTR("right")) == 0)  return c.pusherRight;
     return c.pusherNeutral;
   }
   return -1;
 }
 
 int getServoOffset(const char* servo) {
-  if (strcmp(servo, "bottom") == 0) return 0;
-  if (strcmp(servo, "paddle") == 0) return 1;
-  if (strcmp(servo, "pusher") == 0) return 2;
+  if (strcmp_P(servo, PSTR("bottom")) == 0) return 0;
+  if (strcmp_P(servo, PSTR("paddle")) == 0) return 1;
+  if (strcmp_P(servo, PSTR("pusher")) == 0) return 2;
   return -1;
 }
 
@@ -577,8 +577,8 @@ void routeCard(int targetModule, const char* direction, Print& reply) {
 
   if (!feedNextCard(reply)) return;
 
-  bool dropBottom = strcmp(direction, "bottom") == 0;
-  bool pushLeft = strcmp(direction, "left") == 0;
+  bool dropBottom = strcmp_P(direction, PSTR("bottom")) == 0;
+  bool pushLeft = strcmp_P(direction, PSTR("left")) == 0;
 
   for (int m = 1; m < targetModule; m++) {
     setServoPosition(getChannel(m, 0), moduleConfig[m - 1].bottomOpen);
@@ -741,7 +741,7 @@ void handleCommand(char* json, Print& reply) {
 
   // {"getStatus": true} — report readiness/version on demand; see
   // PROTOCOL.md for why the app sends this on every connection.
-  if (doc["getStatus"].is<bool>() && doc["getStatus"].as<bool>()) {
+  if (doc[F("getStatus")].is<bool>() && doc[F("getStatus")].as<bool>()) {
     reply.print(F("{\"status\":\"ready\",\"version\":\""));
     reply.print(FIRMWARE_VERSION);
     reply.print(F("\",\"board\":\""));
@@ -758,15 +758,15 @@ void handleCommand(char* json, Print& reply) {
   }
 
   // {"setChannelOffset": N} — see channel layout comment near the top.
-  if (doc["setChannelOffset"].is<int>()) {
-    moduleChannelOffset = doc["setChannelOffset"].as<int>();
+  if (doc[F("setChannelOffset")].is<int>()) {
+    moduleChannelOffset = doc[F("setChannelOffset")].as<int>();
     setAllNeutral();
     reply.println(F("{\"status\":\"ok\"}"));
     return;
   }
 
   // {"test": true} — run a full mechanical test sequence then confirm connection
-  if (doc["test"].is<bool>() && doc["test"].as<bool>()) {
+  if (doc[F("test")].is<bool>() && doc[F("test")].as<bool>()) {
     int blockedModule = findBlockedModule();
     if (blockedModule > 0) {
       reply.print(F("{\"error\":\"module "));
@@ -806,7 +806,7 @@ void handleCommand(char* json, Print& reply) {
   }
 
   // {"neutral": true} — reset all servos
-  if (doc["neutral"].is<bool>() && doc["neutral"].as<bool>()) {
+  if (doc[F("neutral")].is<bool>() && doc[F("neutral")].as<bool>()) {
     setAllNeutral();
     reply.println(F("{\"status\":\"ok\"}"));
     return;
@@ -815,7 +815,7 @@ void handleCommand(char* json, Print& reply) {
   // {"clearDevice": true} — flushes any physically stuck card out the
   // bottom regardless of feeder/hopper state; unlike catch-all routing,
   // doesn't call runFeeder() first.
-  if (doc["clearDevice"].is<bool>() && doc["clearDevice"].as<bool>()) {
+  if (doc[F("clearDevice")].is<bool>() && doc[F("clearDevice")].as<bool>()) {
     for (int m = 1; m <= maxModuleForOffset(); m++) {
       setServoPosition(getChannel(m, 0), moduleConfig[m - 1].bottomOpen);
     }
@@ -828,9 +828,9 @@ void handleCommand(char* json, Print& reply) {
 
   // {"servo": "paddle", "module": 1, "position": "left"}
   // {"servo": "bottom", "module": 1, "value": 220}  — raw PWM for calibration
-  if (!doc["servo"].isNull()) {
-    const char* servo = doc["servo"];
-    int module = doc["module"] | 0;
+  if (!doc[F("servo")].isNull()) {
+    const char* servo = doc[F("servo")];
+    int module = doc[F("module")] | 0;
     if (module < 1 || module > maxModuleForOffset()) {
       printModuleRangeError(reply);
       return;
@@ -841,10 +841,10 @@ void handleCommand(char* json, Print& reply) {
       return;
     }
     int pulse;
-    if (doc["value"].is<int>()) {
-      pulse = doc["value"].as<int>();
+    if (doc[F("value")].is<int>()) {
+      pulse = doc[F("value")].as<int>();
     } else {
-      pulse = getPositionPulse(module, offset, doc["position"] | "neutral");
+      pulse = getPositionPulse(module, offset, doc[F("position")] | "neutral");
       if (pulse < 0) {
         reply.println(F("{\"error\":\"invalid position\"}"));
         return;
@@ -867,13 +867,13 @@ void handleCommand(char* json, Print& reply) {
   // module - the app has no way to know what's plugged into an unassigned
   // channel, so this addresses the driver board directly instead of going
   // through getChannel()/module validation like {"servo": ...} does.
-  if (doc["channel"].is<int>() && doc["value"].is<int>()) {
-    int channel = doc["channel"].as<int>();
+  if (doc[F("channel")].is<int>() && doc[F("value")].is<int>()) {
+    int channel = doc[F("channel")].as<int>();
     if (channel < 0 || channel > 15) {
       reply.println(F("{\"error\":\"channel must be 0 to 15\"}"));
       return;
     }
-    setServoPosition(channel, doc["value"].as<int>());
+    setServoPosition(channel, doc[F("value")].as<int>());
     reply.print(F("{\"status\":\"ok\",\"channel\":"));
     reply.print(channel);
     reply.println(F("}"));
@@ -884,8 +884,8 @@ void handleCommand(char* json, Print& reply) {
   // servo under test via {"channel": ...} above, which - like the feeder -
   // doesn't stop on its own at a "neutral" pulse the way a positional servo
   // does)
-  if (doc["channelStop"].is<int>()) {
-    int channel = doc["channelStop"].as<int>();
+  if (doc[F("channelStop")].is<int>()) {
+    int channel = doc[F("channelStop")].as<int>();
     if (channel < 0 || channel > 15) {
       reply.println(F("{\"error\":\"channel must be 0 to 15\"}"));
       return;
@@ -898,22 +898,22 @@ void handleCommand(char* json, Print& reply) {
   }
 
   // {"setConfig": {"module": 1, "bottomClosed": 150, ...}}
-  if (!doc["setConfig"].isNull()) {
-    JsonObject cfg = doc["setConfig"];
-    int module = cfg["module"] | 0;
+  if (!doc[F("setConfig")].isNull()) {
+    JsonObject cfg = doc[F("setConfig")];
+    int module = cfg[F("module")] | 0;
     if (module < 1 || module > maxModuleForOffset()) {
       printModuleRangeError(reply);
       return;
     }
     ModuleConfig& c = moduleConfig[module - 1];
-    c.bottomClosed  = cfg["bottomClosed"]  | c.bottomClosed;
-    c.bottomOpen    = cfg["bottomOpen"]    | c.bottomOpen;
-    c.paddleClosed  = cfg["paddleClosed"]  | c.paddleClosed;
-    c.paddleOpen    = cfg["paddleOpen"]    | c.paddleOpen;
-    c.pusherLeft    = cfg["pusherLeft"]    | c.pusherLeft;
-    c.pusherNeutral = cfg["pusherNeutral"] | c.pusherNeutral;
-    c.pusherRight   = cfg["pusherRight"]   | c.pusherRight;
-    c.paddleCloseDelay = cfg["paddleCloseDelay"] | c.paddleCloseDelay;
+    c.bottomClosed  = cfg[F("bottomClosed")]  | c.bottomClosed;
+    c.bottomOpen    = cfg[F("bottomOpen")]    | c.bottomOpen;
+    c.paddleClosed  = cfg[F("paddleClosed")]  | c.paddleClosed;
+    c.paddleOpen    = cfg[F("paddleOpen")]    | c.paddleOpen;
+    c.pusherLeft    = cfg[F("pusherLeft")]    | c.pusherLeft;
+    c.pusherNeutral = cfg[F("pusherNeutral")] | c.pusherNeutral;
+    c.pusherRight   = cfg[F("pusherRight")]   | c.pusherRight;
+    c.paddleCloseDelay = cfg[F("paddleCloseDelay")] | c.paddleCloseDelay;
 
     reply.print(F("{\"status\":\"ok\",\"module\":"));
     reply.print(module);
@@ -922,7 +922,7 @@ void handleCommand(char* json, Print& reply) {
   }
 
   // {"feeder": true} — run feeder until module 1 IR detects a card (or timeout/empty hopper)
-  if (doc["feeder"].is<bool>() && doc["feeder"].as<bool>()) {
+  if (doc[F("feeder")].is<bool>() && doc[F("feeder")].as<bool>()) {
     FeedResult result = runFeeder();
     reply.print(F("{\"status\":\"ok\",\"detected\":"));
     reply.print(result == FEED_DETECTED ? F("true") : F("false"));
@@ -933,27 +933,27 @@ void handleCommand(char* json, Print& reply) {
   }
 
   // {"feederValue": N} — set raw PWM (for calibration preview, does not auto-stop)
-  if (doc["feederValue"].is<int>()) {
-    setServoPosition(getFeederChannel(), doc["feederValue"].as<int>());
+  if (doc[F("feederValue")].is<int>()) {
+    setServoPosition(getFeederChannel(), doc[F("feederValue")].as<int>());
     reply.println(F("{\"status\":\"ok\"}"));
     return;
   }
 
   // {"feederStop": true} — stop feeder immediately
-  if (doc["feederStop"].is<bool>() && doc["feederStop"].as<bool>()) {
+  if (doc[F("feederStop")].is<bool>() && doc[F("feederStop")].as<bool>()) {
     stopFeeder();
     reply.println(F("{\"status\":\"ok\"}"));
     return;
   }
 
   // {"setFeederConfig": {"speed": N, "duration": N, "pulseDuration": N, "pauseDuration": N, "settleDuration": N}}
-  if (!doc["setFeederConfig"].isNull()) {
-    JsonObject cfg = doc["setFeederConfig"];
-    feederConfig.speed          = cfg["speed"]          | feederConfig.speed;
-    feederConfig.duration       = cfg["duration"]       | feederConfig.duration;
-    feederConfig.pulseDuration  = cfg["pulseDuration"]  | feederConfig.pulseDuration;
-    feederConfig.pauseDuration  = cfg["pauseDuration"]  | feederConfig.pauseDuration;
-    feederConfig.settleDuration = cfg["settleDuration"] | feederConfig.settleDuration;
+  if (!doc[F("setFeederConfig")].isNull()) {
+    JsonObject cfg = doc[F("setFeederConfig")];
+    feederConfig.speed          = cfg[F("speed")]          | feederConfig.speed;
+    feederConfig.duration       = cfg[F("duration")]       | feederConfig.duration;
+    feederConfig.pulseDuration  = cfg[F("pulseDuration")]  | feederConfig.pulseDuration;
+    feederConfig.pauseDuration  = cfg[F("pauseDuration")]  | feederConfig.pauseDuration;
+    feederConfig.settleDuration = cfg[F("settleDuration")] | feederConfig.settleDuration;
     stopFeeder();
     reply.println(F("{\"status\":\"ok\"}"));
     return;
@@ -1013,7 +1013,7 @@ void handleCommand(char* json, Print& reply) {
 #endif
 
   // {"readIR": true} — read current IR sensor state for all modules + hopper
-  if (doc["readIR"].is<bool>() && doc["readIR"].as<bool>()) {
+  if (doc[F("readIR")].is<bool>() && doc[F("readIR")].as<bool>()) {
     reply.print(F("{\"status\":\"ok\",\"ir\":["));
     for (int m = 1; m <= maxModuleForOffset(); m++) {
       if (m > 1) reply.print(',');
@@ -1026,16 +1026,16 @@ void handleCommand(char* json, Print& reply) {
   }
 
   // {"route": {"module": N, "direction": "left"|"right"|"bottom"}} — see routeCard()
-  if (!doc["route"].isNull()) {
-    JsonObject route = doc["route"];
-    int module = route["module"] | 0;
-    const char* direction = route["direction"] | "";
+  if (!doc[F("route")].isNull()) {
+    JsonObject route = doc[F("route")];
+    int module = route[F("module")] | 0;
+    const char* direction = route[F("direction")] | "";
     if (module < 1 || module > maxModuleForOffset()) {
       printModuleRangeError(reply);
       return;
     }
-    if (strcmp(direction, "left") != 0 && strcmp(direction, "right") != 0 &&
-        strcmp(direction, "bottom") != 0) {
+    if (strcmp_P(direction, PSTR("left")) != 0 && strcmp_P(direction, PSTR("right")) != 0 &&
+        strcmp_P(direction, PSTR("bottom")) != 0) {
       reply.println(F("{\"error\":\"direction must be left, right, or bottom\"}"));
       return;
     }
@@ -1088,9 +1088,9 @@ void setup() {
 #endif
 
   char bootLine[96];
-  snprintf(bootLine, sizeof(bootLine),
-           "{\"status\":\"ready\",\"version\":\"%s\",\"board\":\"%s\"}",
-           FIRMWARE_VERSION, BOARD_TYPE);
+  snprintf_P(bootLine, sizeof(bootLine),
+             PSTR("{\"status\":\"ready\",\"version\":\"%s\",\"board\":\"%s\"}"),
+             FIRMWARE_VERSION, BOARD_TYPE);
   broadcastLine(bootLine);
 }
 
