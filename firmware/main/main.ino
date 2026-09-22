@@ -86,7 +86,10 @@ JsonArena jsonArena;
 // (WROOM/WROVER) and the Uno R4 Minima have no native USB either way and
 // are unaffected - Serial there is always the UART bridge chip.
 
-#define FIRMWARE_VERSION "2.0.12"
+// Upstream base plus this fork's revision (feeder overrun, light bar, count,
+// per-pixel levels). Bump the suffix on every firmware change so getStatus
+// identifies the build actually on the board.
+#define FIRMWARE_VERSION "2.0.12-swu.4"
 
 // Reported in getStatus/boot so the app knows how (or whether) it can
 // update the device - only the ESP32 build can be reflashed from the
