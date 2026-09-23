@@ -6,7 +6,10 @@
 // SWU_PRESET_REPLACE=1, which deletes and recreates every preset.
 //
 // Presets are built for the 7-bin sorter: six rule bins, bin 7 the catch-all. Rules evaluate first-match-wins in bin order
-// (shared/evaluate-bin.ts), which the Aspect preset relies on.
+// (shared/evaluate-bin.ts), which the Aspect preset relies on. Every preset
+// except Variant also gets a "(Standard only)" twin that AND-s a
+// variant=Standard clause onto each rule bin, sending Hyperspace/Foil/etc.
+// prints to the catch-all instead.
 //
 // Boundaries: the seed JSON and every API response are parsed with Zod
 // before use; rule shapes come from @magic-vault/shared's own contracts.
@@ -171,6 +174,14 @@ const PRESETS: { name: string; bins: BinRuleGroup[]; binCount?: number }[] = [
   },
 ];
 
+const STANDARD_ONLY: { name: string; bins: BinRuleGroup[]; binCount?: number }[] = PRESETS
+  .filter((preset) => preset.name !== "Variant")
+  .map((preset) => ({
+    name: `${preset.name} (Standard only)`,
+    binCount: preset.binCount,
+    bins: preset.bins.map((group) => all(cond("variant", "equals", "Standard"), group)),
+  }));
+
 function log(msg: string) {
   console.log(`[seed-swu-bins] ${msg}`);
 }
@@ -227,7 +238,7 @@ async function main() {
   const existing = new Map((listed.data ?? []).map((s) => [s.name, s.guid]));
 
   let firstGuid: string | undefined;
-  for (const preset of PRESETS) {
+  for (const preset of [...PRESETS, ...STANDARD_ONLY]) {
     if (existing.has(preset.name)) {
       if (!REPLACE) {
         log(`Preset "${preset.name}" already exists, skipping (SWU_PRESET_REPLACE=1 to recreate).`);
