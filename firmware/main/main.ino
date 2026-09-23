@@ -91,7 +91,7 @@ JsonArena jsonArena;
 // Upstream base 2.0.13 plus this fork's revision (feeder overrun, light bar,
 // count, per-pixel levels). Bump the suffix on every firmware change so
 // getStatus identifies the build actually on the board.
-#define FIRMWARE_VERSION "2.0.13-swu.12"
+#define FIRMWARE_VERSION "2.0.13-swu.13"
 
 // Reported in getStatus/boot so the app knows how (or whether) it can
 // update the device - only the ESP32 build can be reflashed from the
