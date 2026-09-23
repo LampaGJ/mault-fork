@@ -202,7 +202,7 @@ struct LightConfig {
 // touch above the centre pair, so the camera sees an even plate with no hot spot.
 LightConfig lightConfig = {
   {{255, 180, 107}, {255, 180, 107}, {255, 180, 107}},
-  LIGHT_MAX_BRIGHTNESS, LED_COUNT, true, {10, 10, 5, 5, 10, 10}
+  LIGHT_MAX_BRIGHTNESS, LED_COUNT, true, {15, 15, 5, 5, 15, 15}
 };
 
 // Static, not heap - see the ARDUINO_ARCH_AVR include guard above for why.
